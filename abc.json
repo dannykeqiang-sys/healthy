@@ -1,0 +1,4 @@
+{
+  "builder": "@ali/builder-ice-v3",
+  "nodeVersion": "18"
+}
