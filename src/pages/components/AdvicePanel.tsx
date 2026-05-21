@@ -50,13 +50,27 @@ function genAdvices(profile: UserProfile, record: DailyRecord): Advice[] {
       bg: 'bg-orange-50',
     });
   } else if (surplus < -300 && totalIntake > 0) {
-    advices.push({
-      icon: Apple,
-      title: '热量缺口过大，注意营养充足',
-      content: `今天热量缺口达 ${Math.abs(surplus)} 大卡，长期大幅节食会降低基础代谢率。建议控制在 -500 kcal 以内，保证优质蛋白质摄入，避免肌肉流失。`,
-      color: '#C9934A',
-      bg: 'bg-amber-50',
-    });
+    const remaining = Math.abs(surplus);
+    const mainMealsRecorded = ['breakfast', 'lunch', 'dinner'].filter(
+      m => record.meals[m as keyof typeof record.meals].length > 0,
+    ).length;
+    if (mainMealsRecorded < 3) {
+      advices.push({
+        icon: Apple,
+        title: `今天还能吃 ${remaining} 大卡`,
+        content: `距离今日目标还有 ${remaining} 大卡的空间，合理安排接下来的餐食，吃饱又营养才是关键！`,
+        color: '#A3B899',
+        bg: 'bg-primary/5',
+      });
+    } else if (surplus < -500) {
+      advices.push({
+        icon: Apple,
+        title: '热量缺口较大，记得吃够哦',
+        content: `今天热量缺口达 ${remaining} 大卡，长期大幅节食会降低基础代谢率。保证优质蛋白质摄入，健康瘦才能瘦得长久。`,
+        color: '#C9934A',
+        bg: 'bg-amber-50',
+      });
+    }
   }
 
   if (totalBurn === 0) {

@@ -73,6 +73,75 @@ export async function streamReview(
   }
 }
 
+export interface ChatMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
+export async function streamChatWithContext(
+  apiKey: string,
+  systemPrompt: string,
+  messages: ChatMessage[],
+  callbacks: StreamCallbacks,
+): Promise<void> {
+  let response: Response;
+  try {
+    response = await fetch(DEEPSEEK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'system', content: systemPrompt }, ...messages],
+        stream: true,
+        temperature: 0.7,
+      }),
+    });
+  } catch {
+    callbacks.onError(new Error('网络请求失败，请检查网络连接'));
+    return;
+  }
+
+  if (!response.ok) {
+    callbacks.onError(new Error(`API 请求失败 (${response.status})，请检查 API Key 是否正确`));
+    return;
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) {
+    callbacks.onError(new Error('无法读取响应流'));
+    return;
+  }
+
+  const decoder = new TextDecoder();
+  let buffer = '';
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed === 'data: [DONE]') continue;
+        if (!trimmed.startsWith('data: ')) continue;
+        try {
+          const json = JSON.parse(trimmed.slice(6));
+          const content = json.choices?.[0]?.delta?.content;
+          if (content) callbacks.onChunk(content);
+        } catch {
+          // skip malformed chunks
+        }
+      }
+    }
+    callbacks.onDone();
+  } catch (err) {
+    callbacks.onError(err instanceof Error ? err : new Error(String(err)));
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 export interface CalorieEstimate {
   food_name: string;
   estimated_weight: string;
@@ -125,6 +194,7 @@ export interface MixedMealResult {
     dinner: ParsedFoodItem[];
     snack: ParsedFoodItem[];
     exercises: ParsedExerciseItem[];
+    water_logs: WaterLogItem[];
   };
 }
 
@@ -151,7 +221,8 @@ export async function parseMixedMeals(
     "lunch": [{ "name": "食物名称", "calories": 数字 }],
     "dinner": [{ "name": "食物名称", "calories": 数字 }],
     "snack": [{ "name": "食物名称", "calories": 数字 }],
-    "exercises": [{ "name": "运动名称", "calories": 数字 }]
+    "exercises": [{ "name": "运动名称", "calories": 数字 }],
+    "water_logs": [{ "raw_text": "液体简称", "amount": 含水量毫升整数 }]
   }
 }
 
@@ -159,7 +230,9 @@ export async function parseMixedMeals(
 - 每种食物/饮品单独一个对象，calories 为纯整数
 - 无数据的餐段返回空数组 []
 - exercises 包含用户提及的所有运动，无运动则返回 []
-- 时间线索（早上/中午/晚上/下午）决定归属餐段，无明确时间线索默认归入对应合理餐段`,
+- 时间线索（早上/中午/晚上/下午）决定归属餐段，无明确时间线索默认归入对应合理餐段
+- water_logs：识别所有液体/含水饮品（水、茶、咖啡、牛奶、豆浆、果汁、奶茶、拿铁、汤、粥等），估算实际含水量ml；raw_text为该项简洁描述（≤10字），amount为纯整数ml；无液体则返回 []
+- 含水率参考：纯水100%、茶98%、美式95%、豆浆95%、果汁88%、牛奶87%、拿铁83%、奶茶80%、汤90%、粥85%；无分量时按常见份量推断（一杯250ml、一碗300ml）`,
         },
         { role: 'user', content: userInput },
       ],

@@ -3,7 +3,7 @@ import { Button } from '@/components/shadcn/button';
 import { Mic, MicOff, Sparkles, CheckCircle, AlertCircle, X, Plus, RefreshCw } from 'lucide-react';
 import { parseMixedMeals } from '../../utils/deepseek';
 import { safeNormalizeString } from '../../utils/stringUtils';
-import type { FoodItem, MealType, DailyRecord, ExerciseItem } from '../../types';
+import type { FoodItem, MealType, DailyRecord, ExerciseItem, WaterItem } from '../../types';
 
 interface GlobalTreeholeInputProps {
   apiKey: string;
@@ -12,6 +12,7 @@ interface GlobalTreeholeInputProps {
   onMealsReplace: (updates: { mealType: MealType; item: FoodItem }[]) => void;
   onExercisesUpdate: (exercises: ExerciseItem[]) => void;
   onExercisesReplace: (exercises: ExerciseItem[]) => void;
+  onWaterUpdate: (items: WaterItem[]) => void;
 }
 
 type Status = 'idle' | 'listening' | 'parsing' | 'confirm' | 'success' | 'error';
@@ -39,11 +40,14 @@ interface SummaryItem {
   name: string;
   calories: number;
   isExercise?: boolean;
+  isWater?: boolean;
+  waterAmount?: number;
 }
 
 interface PendingResult {
   mealUpdates: { mealType: MealType; item: FoodItem }[];
   exerciseItems: ExerciseItem[];
+  waterItems: WaterItem[];
   summaryItems: SummaryItem[];
   summary: string;
 }
@@ -54,6 +58,7 @@ export default function GlobalTreeholeInput({
   onMealsReplace,
   onExercisesUpdate,
   onExercisesReplace,
+  onWaterUpdate,
 }: GlobalTreeholeInputProps) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<Status>('idle');
@@ -155,13 +160,26 @@ export default function GlobalTreeholeInput({
         }
       }
 
-      if (mealUpdates.length === 0 && exerciseItems.length === 0) {
+      const waterItems: WaterItem[] = [];
+      if (Array.isArray(result.data.water_logs)) {
+        const now = new Date();
+        const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        for (const w of result.data.water_logs) {
+          if (!w.raw_text || w.amount <= 0) continue;
+          const safeName = safeNormalizeString(w.raw_text);
+          if (!safeName) continue;
+          waterItems.push({ id: crypto.randomUUID(), amount: w.amount, note: safeName, time: timeStr });
+          items.push({ label: '喝水', name: safeName, calories: 0, isWater: true, waterAmount: w.amount });
+        }
+      }
+
+      if (mealUpdates.length === 0 && exerciseItems.length === 0 && waterItems.length === 0) {
         setErrorMsg('没有识别到有效的饮食或运动信息，请重新描述');
         setStatus('error');
         return;
       }
 
-      setPending({ mealUpdates, exerciseItems, summaryItems: items, summary: result.analysis_summary });
+      setPending({ mealUpdates, exerciseItems, waterItems, summaryItems: items, summary: result.analysis_summary });
       setText('');
       setStatus('confirm');
     } catch {
@@ -174,6 +192,7 @@ export default function GlobalTreeholeInput({
     if (!pending) return;
     if (pending.mealUpdates.length > 0) onMealsUpdate(pending.mealUpdates);
     if (pending.exerciseItems.length > 0) onExercisesUpdate(pending.exerciseItems);
+    if (pending.waterItems.length > 0) onWaterUpdate(pending.waterItems);
     setSummary(pending.summary);
     setSummaryItems(pending.summaryItems);
     setPending(null);
@@ -184,6 +203,7 @@ export default function GlobalTreeholeInput({
     if (!pending) return;
     if (pending.mealUpdates.length > 0) onMealsReplace(pending.mealUpdates);
     if (pending.exerciseItems.length > 0) onExercisesReplace(pending.exerciseItems);
+    if (pending.waterItems.length > 0) onWaterUpdate(pending.waterItems);
     setSummary(pending.summary);
     setSummaryItems(pending.summaryItems);
     setPending(null);
@@ -224,14 +244,16 @@ export default function GlobalTreeholeInput({
                   key={i}
                   className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{
-                    backgroundColor: m.isExercise
+                    backgroundColor: m.isWater
+                      ? 'rgba(96,165,250,0.15)'
+                      : m.isExercise
                       ? 'rgba(125,185,232,0.15)'
                       : 'rgba(163,184,153,0.15)',
-                    color: m.isExercise ? '#4A90A4' : '#6B9960',
+                    color: m.isWater ? '#3B82F6' : m.isExercise ? '#4A90A4' : '#6B9960',
                   }}
                 >
                   {m.label} · {m.name}
-                  {m.isExercise ? ` -${m.calories}` : ` +${m.calories}`} kcal
+                  {m.isWater ? ` +${m.waterAmount}ml` : m.isExercise ? ` -${m.calories} kcal` : ` +${m.calories} kcal`}
                 </span>
               ))}
             </div>
@@ -276,14 +298,16 @@ export default function GlobalTreeholeInput({
                   key={i}
                   className="text-xs px-2 py-0.5 rounded-full font-medium"
                   style={{
-                    backgroundColor: m.isExercise
+                    backgroundColor: m.isWater
+                      ? 'rgba(96,165,250,0.15)'
+                      : m.isExercise
                       ? 'rgba(125,185,232,0.15)'
                       : 'rgba(163,184,153,0.15)',
-                    color: m.isExercise ? '#4A90A4' : '#6B9960',
+                    color: m.isWater ? '#3B82F6' : m.isExercise ? '#4A90A4' : '#6B9960',
                   }}
                 >
                   {m.label} · {m.name}
-                  {m.isExercise ? ` -${m.calories}` : ` +${m.calories}`} kcal
+                  {m.isWater ? ` +${m.waterAmount}ml` : m.isExercise ? ` -${m.calories} kcal` : ` +${m.calories} kcal`}
                 </span>
               ))}
             </div>

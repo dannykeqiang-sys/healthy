@@ -13,6 +13,7 @@ import MealCarousel from './components/MealCarousel';
 import type { MealCarouselRef } from './components/MealCarousel';
 import DateSwitcher from './components/DateSwitcher';
 import AnalyticsPanel from './components/AnalyticsPanel';
+import AIChatPanel from './components/AIChatPanel';
 import { loadProfile, loadTodayRecord, saveTodayRecord, loadRecordByDate, saveRecordByDate } from '../utils/storage';
 import { idbSaveRecord, idbGetRecord } from '../utils/indexedDB';
 import { syncRecordToCloud } from '../utils/supabaseDB';
@@ -177,6 +178,17 @@ export default function Home() {
     [scheduleScroll],
   );
 
+  const handleWaterUpdate = useCallback((items: import('../types').WaterItem[]) => {
+    setRecord(prev => {
+      if (!prev) return prev;
+      const newRecord = { ...prev, water: [...prev.water, ...items] };
+      saveTodayRecord(newRecord);
+      idbSaveRecord(newRecord).catch(() => {});
+      syncRecordToCloud(newRecord).catch(() => {});
+      return newRecord;
+    });
+  }, []);
+
   const handleProfileSave = useCallback((p: UserProfile) => {
     setProfile(p);
   }, []);
@@ -272,6 +284,7 @@ export default function Home() {
                 onMealsReplace={handleMealsReplace}
                 onExercisesUpdate={handleExercisesUpdate}
                 onExercisesReplace={handleExercisesReplace}
+                onWaterUpdate={handleWaterUpdate}
               />
             )}
 
@@ -303,6 +316,8 @@ export default function Home() {
                 </button>
               )}
             </div>
+
+            <AIChatPanel profile={profile} record={record} apiKey={apiKey} />
 
             <SmartAdvicePanel profile={profile} record={record} apiKey={apiKey} />
 
