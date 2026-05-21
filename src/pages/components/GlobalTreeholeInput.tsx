@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Button } from '@/components/shadcn/button';
-import { Mic, MicOff, Sparkles, CheckCircle, AlertCircle, X } from 'lucide-react';
+import { Mic, MicOff, Sparkles, CheckCircle, AlertCircle, X, Plus, RefreshCw } from 'lucide-react';
 import { parseMixedMeals } from '../../utils/deepseek';
 import { safeNormalizeString } from '../../utils/stringUtils';
 import type { FoodItem, MealType, DailyRecord, ExerciseItem } from '../../types';
@@ -9,10 +9,12 @@ interface GlobalTreeholeInputProps {
   apiKey: string;
   record: DailyRecord;
   onMealsUpdate: (updates: { mealType: MealType; item: FoodItem }[]) => void;
+  onMealsReplace: (updates: { mealType: MealType; item: FoodItem }[]) => void;
   onExercisesUpdate: (exercises: ExerciseItem[]) => void;
+  onExercisesReplace: (exercises: ExerciseItem[]) => void;
 }
 
-type Status = 'idle' | 'listening' | 'parsing' | 'success' | 'error';
+type Status = 'idle' | 'listening' | 'parsing' | 'confirm' | 'success' | 'error';
 
 declare class WebkitSpeechRecognition {
   lang: string;
@@ -39,16 +41,26 @@ interface SummaryItem {
   isExercise?: boolean;
 }
 
+interface PendingResult {
+  mealUpdates: { mealType: MealType; item: FoodItem }[];
+  exerciseItems: ExerciseItem[];
+  summaryItems: SummaryItem[];
+  summary: string;
+}
+
 export default function GlobalTreeholeInput({
   apiKey,
   onMealsUpdate,
+  onMealsReplace,
   onExercisesUpdate,
+  onExercisesReplace,
 }: GlobalTreeholeInputProps) {
   const [text, setText] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [summary, setSummary] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [summaryItems, setSummaryItems] = useState<SummaryItem[]>([]);
+  const [pending, setPending] = useState<PendingResult | null>(null);
   const recognitionRef = useRef<WebkitSpeechRecognition | null>(null);
 
   const isSpeechSupported = () =>
@@ -95,6 +107,7 @@ export default function GlobalTreeholeInput({
     setSummary('');
     setErrorMsg('');
     setSummaryItems([]);
+    setPending(null);
 
     try {
       const result = await parseMixedMeals(apiKey, text.trim());
@@ -148,17 +161,33 @@ export default function GlobalTreeholeInput({
         return;
       }
 
-      if (mealUpdates.length > 0) onMealsUpdate(mealUpdates);
-      if (exerciseItems.length > 0) onExercisesUpdate(exerciseItems);
-
-      setSummary(result.analysis_summary);
-      setSummaryItems(items);
-      setStatus('success');
+      setPending({ mealUpdates, exerciseItems, summaryItems: items, summary: result.analysis_summary });
       setText('');
+      setStatus('confirm');
     } catch {
       setErrorMsg('AI 解析失败，请检查网络或 API Key 是否有效');
       setStatus('error');
     }
+  };
+
+  const handleAppend = () => {
+    if (!pending) return;
+    if (pending.mealUpdates.length > 0) onMealsUpdate(pending.mealUpdates);
+    if (pending.exerciseItems.length > 0) onExercisesUpdate(pending.exerciseItems);
+    setSummary(pending.summary);
+    setSummaryItems(pending.summaryItems);
+    setPending(null);
+    setStatus('success');
+  };
+
+  const handleReplace = () => {
+    if (!pending) return;
+    if (pending.mealUpdates.length > 0) onMealsReplace(pending.mealUpdates);
+    if (pending.exerciseItems.length > 0) onExercisesReplace(pending.exerciseItems);
+    setSummary(pending.summary);
+    setSummaryItems(pending.summaryItems);
+    setPending(null);
+    setStatus('success');
   };
 
   const reset = () => {
@@ -166,6 +195,7 @@ export default function GlobalTreeholeInput({
     setSummary('');
     setErrorMsg('');
     setSummaryItems([]);
+    setPending(null);
     setText('');
   };
 
@@ -184,7 +214,56 @@ export default function GlobalTreeholeInput({
         </div>
       </div>
 
-      {status === 'success' ? (
+      {status === 'confirm' && pending ? (
+        <div className="space-y-3 animate-in fade-in duration-200">
+          <div className="rounded-xl bg-white/80 border border-primary/20 p-3 space-y-2">
+            <p className="text-sm text-foreground leading-relaxed">{pending.summary}</p>
+            <div className="flex flex-wrap gap-1.5 pt-0.5">
+              {pending.summaryItems.map((m, i) => (
+                <span
+                  key={i}
+                  className="text-xs px-2 py-0.5 rounded-full font-medium"
+                  style={{
+                    backgroundColor: m.isExercise
+                      ? 'rgba(125,185,232,0.15)'
+                      : 'rgba(163,184,153,0.15)',
+                    color: m.isExercise ? '#4A90A4' : '#6B9960',
+                  }}
+                >
+                  {m.label} · {m.name}
+                  {m.isExercise ? ` -${m.calories}` : ` +${m.calories}`} kcal
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-muted-foreground px-0.5">如何处理识别结果？</p>
+            <div className="flex gap-2">
+              <button
+                onClick={handleAppend}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-primary/10 hover:bg-primary/20 border border-primary/25 text-primary text-sm font-medium transition-all cursor-pointer active:scale-95"
+              >
+                <Plus className="w-4 h-4" />
+                追加到现有记录
+              </button>
+              <button
+                onClick={handleReplace}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-secondary/10 hover:bg-secondary/20 border border-secondary/25 text-secondary text-sm font-medium transition-all cursor-pointer active:scale-95"
+              >
+                <RefreshCw className="w-4 h-4" />
+                覆盖今日记录
+              </button>
+            </div>
+            <button
+              onClick={reset}
+              className="text-xs text-muted-foreground hover:text-foreground cursor-pointer underline underline-offset-2 transition-colors text-center"
+            >
+              取消，重新输入
+            </button>
+          </div>
+        </div>
+      ) : status === 'success' ? (
         <div className="space-y-3">
           <div className="rounded-xl bg-white/80 border border-primary/20 p-3 space-y-2">
             <div className="flex items-start gap-2">
@@ -237,7 +316,7 @@ export default function GlobalTreeholeInput({
                 value={text}
                 onChange={e => setText(e.target.value)}
                 placeholder={isListening ? '正在聆听，请说话...' : '如：早上喝了牛奶，中午吃了米饭和鸡胸肉，下午跑步了30分钟'}
-                rows={2}
+                rows={6}
                 className="w-full resize-none rounded-xl border border-border/70 bg-white/80 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/30 transition-all"
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) {

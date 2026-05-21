@@ -1,0 +1,31 @@
+[    1194ms] [ERROR] Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?%s%s 
+
+Check the render method of `Primitive.div.SlotClone`. 
+    at DialogOverlay (http://localhost:3000/js/main.js:154566:26)
+    at http://localhost:3000/js/main.js:189110:17
+    at http://localhost:3000/js/main.js:189080:17
+    at http://localhost:3000/js/main.js:189039:17
+    at http://localhost:3000/js/main.js:188844:24
+    at Presence (http://localhost:3000/js/main.js:188882:13)
+    at Provider (http://localhost:3000/js/main.js:182600:21)
+    at DialogPortal (http://localhost:3000/js/main.js:182782:13)
+    at DialogPortal (http://localhost:3000/js/main.js:154538:28)
+    at DialogContent (http://localhost:3000/js/main.js:154581:26)
+    at Provider (http://localhost:3000/js/main.js:182600:21)
+    at Dialog (http://localhost:3000/js/main.js:182734:13)
+    at Dialog (http://localhost:3000/js/main.js:154510:22)
+    at UserProfilePanel (http://localhost:3000/js/main.js:158209:29)
+    at div
+    at Home (http://localhost:3000/js/main.js:159105:83)
+    at RouteWrapper (http://localhost:3000/js/main.js:174800:13)
+    at Component (http://localhost:3000/js/main.js:154140:101)
+    at RenderedRoute (http://localhost:3000/js/main.js:142877:11)
+    at RenderErrorBoundary (http://localhost:3000/js/main.js:142828:9)
+    at DataRoutes (http://localhost:3000/js/main.js:141662:11)
+    at Router (http://localhost:3000/js/main.js:143406:21)
+    at RouterProvider (http://localhost:3000/js/main.js:141439:11)
+    at App (http://localhost:3000/js/main.js:174344:16)
+    at ClientRouter (http://localhost:3000/js/main.js:174462:13) @ http://localhost:3000/js/main.js:118797
+[    1204ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ http://localhost:3000/js/main.js:183016
+[   76478ms] [ERROR] Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it. @ http://localhost:3000/js/main.js:118797
+[   77092ms] [WARNING] Warning: Missing `Description` or `aria-describedby={undefined}` for {DialogContent}. @ http://localhost:3000/js/main.js:183016

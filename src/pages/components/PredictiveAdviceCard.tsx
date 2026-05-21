@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/shadcn/button';
-import { Sparkles, Leaf, Dumbbell, Target, AlertCircle } from 'lucide-react';
+import { Sparkles, Leaf, Dumbbell, Target, AlertCircle, Lightbulb } from 'lucide-react';
 import { generatePredictiveAdvice } from '../../utils/deepseek';
 import { idbGetRecentRecords } from '../../utils/indexedDB';
 import { calcTargetCalories } from '../../utils/calculations';
@@ -14,6 +14,44 @@ interface PredictiveAdviceCardProps {
 }
 
 type Status = 'locked' | 'ready' | 'loading' | 'opening' | 'revealed' | 'error';
+
+interface AdviceState {
+  title: string;
+  today_review: string;
+  energy_target: string;
+  diet_strategy: string;
+  exercise_suggestion: string;
+  health_tips?: string;
+}
+
+function getAdviceCacheKey(date: string): string {
+  return `predictive_advice_cache_${date}`;
+}
+
+function loadAdviceCache(date: string): AdviceState | null {
+  try {
+    const raw = localStorage.getItem(getAdviceCacheKey(date));
+    return raw ? JSON.parse(raw) as AdviceState : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveAdviceCache(date: string, advice: AdviceState): void {
+  try {
+    localStorage.setItem(getAdviceCacheKey(date), JSON.stringify(advice));
+  } catch {
+    // ignore
+  }
+}
+
+function clearAdviceCache(date: string): void {
+  try {
+    localStorage.removeItem(getAdviceCacheKey(date));
+  } catch {
+    // ignore
+  }
+}
 
 function buildTodaySummary(profile: UserProfile, record: DailyRecord): string {
   const target = calcTargetCalories(profile);
@@ -33,15 +71,18 @@ function buildTodaySummary(profile: UserProfile, record: DailyRecord): string {
   return `目标热量：${target} kcal\n总摄入：${intake} kcal\n运动消耗：${burn} kcal\n净摄入：${intake - burn} kcal\n\n${mealLines}\n运动：${exerciseText}`;
 }
 
+function determineMode(record: DailyRecord): 'next_meal' | 'tomorrow' {
+  const hour = new Date().getHours();
+  const hasAllMainMeals =
+    record.meals.breakfast.length > 0 &&
+    record.meals.lunch.length > 0 &&
+    record.meals.dinner.length > 0;
+  return hour < 21 && !hasAllMainMeals ? 'next_meal' : 'tomorrow';
+}
+
 export default function PredictiveAdviceCard({ profile, record, apiKey, isComplete }: PredictiveAdviceCardProps) {
   const [status, setStatus] = useState<Status>(isComplete ? 'ready' : 'locked');
-  const [advice, setAdvice] = useState<{
-    title: string;
-    today_review: string;
-    energy_target: string;
-    diet_strategy: string;
-    exercise_suggestion: string;
-  } | null>(null);
+  const [advice, setAdvice] = useState<AdviceState | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
   if (!isComplete && status !== 'locked') setStatus('locked');
@@ -49,6 +90,15 @@ export default function PredictiveAdviceCard({ profile, record, apiKey, isComple
 
   const handleUnlock = async () => {
     if (!profile || !apiKey) return;
+
+    const cached = loadAdviceCache(record.date);
+    if (cached) {
+      setAdvice(cached);
+      setStatus('opening');
+      setTimeout(() => setStatus('revealed'), 500);
+      return;
+    }
+
     setStatus('loading');
 
     try {
@@ -62,20 +112,25 @@ export default function PredictiveAdviceCard({ profile, record, apiKey, isComple
         })
         .join('\n') || '暂无近期历史';
 
+      const mode = determineMode(record);
       const result = await generatePredictiveAdvice(
         apiKey,
         buildTodaySummary(profile, record),
         historyContext,
+        mode,
       );
 
-      setAdvice({
+      const newAdvice: AdviceState = {
         title: result.predictive_advice.title,
         today_review: result.today_review,
         energy_target: result.predictive_advice.energy_target,
         diet_strategy: result.predictive_advice.diet_strategy,
         exercise_suggestion: result.predictive_advice.exercise_suggestion,
-      });
+        health_tips: result.predictive_advice.health_tips,
+      };
 
+      saveAdviceCache(record.date, newAdvice);
+      setAdvice(newAdvice);
       setStatus('opening');
       setTimeout(() => setStatus('revealed'), 500);
     } catch {
@@ -85,6 +140,7 @@ export default function PredictiveAdviceCard({ profile, record, apiKey, isComple
   };
 
   const handleRegen = () => {
+    clearAdviceCache(record.date);
     setAdvice(null);
     setStatus('ready');
   };
@@ -116,7 +172,7 @@ export default function PredictiveAdviceCard({ profile, record, apiKey, isComple
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">今日数据已就绪</p>
-          <p className="text-xs text-muted-foreground mt-1">让 AI 为你预测明天的治愈方案</p>
+          <p className="text-xs text-muted-foreground mt-1">让 AI 为你预测下一步治愈方案</p>
         </div>
         {!apiKey ? (
           <p className="text-xs text-secondary font-medium">请先在设置中填写 DeepSeek API Key</p>
@@ -127,7 +183,7 @@ export default function PredictiveAdviceCard({ profile, record, apiKey, isComple
             className="bg-secondary hover:bg-secondary/90 text-white cursor-pointer gap-1.5"
           >
             <Sparkles className="w-3.5 h-3.5" />
-            开启翌日锦囊
+            开启锦囊
           </Button>
         )}
       </div>
@@ -151,7 +207,7 @@ export default function PredictiveAdviceCard({ profile, record, apiKey, isComple
             />
           ))}
         </div>
-        <p className="text-sm text-muted-foreground">正在为你预测翌日治愈方案...</p>
+        <p className="text-sm text-muted-foreground">正在为你生成专属锦囊...</p>
         <style>{`
           @keyframes float-bar {
             0%, 100% { height: 8px; opacity: 0.5; }
@@ -239,6 +295,18 @@ export default function PredictiveAdviceCard({ profile, record, apiKey, isComple
         </div>
         <p className="text-sm text-foreground leading-normal pl-7.5">{advice?.exercise_suggestion}</p>
       </div>
+
+      {advice?.health_tips && (
+        <div className="w-full h-auto flex flex-col space-y-1 bg-sky-50 border border-sky-100 p-3 rounded-xl">
+          <div className="flex items-center gap-1.5 mb-0.5">
+            <div className="w-6 h-6 rounded-lg bg-sky-100 flex items-center justify-center flex-shrink-0">
+              <Lightbulb className="w-3 h-3 text-sky-500" />
+            </div>
+            <p className="text-xs font-semibold text-muted-foreground">健康小贴士</p>
+          </div>
+          <p className="text-sm text-foreground leading-normal pl-7.5">{advice.health_tips}</p>
+        </div>
+      )}
 
       <div className="flex justify-end pt-1">
         <button

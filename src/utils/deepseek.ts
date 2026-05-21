@@ -172,11 +172,112 @@ export async function parseMixedMeals(
   return JSON.parse(data.choices[0].message.content) as MixedMealResult;
 }
 
+export interface SmartAdviceResult {
+  has_data: boolean;
+  next_action_trigger: 'next_meal' | 'tomorrow';
+  today_review: string;
+  predictive_advice: {
+    title: string;
+    energy_target: string;
+    diet_strategy: string;
+    exercise_suggestion: string;
+  };
+  health_tips: string;
+}
+
+export async function generateSmartAdvice(
+  apiKey: string,
+  todaySummary: string,
+  historyContext: string,
+  mode: 'next_meal' | 'tomorrow',
+): Promise<SmartAdviceResult> {
+  const timeStr = new Date().toLocaleString('zh-CN', { hour12: false });
+  const isNextMeal = mode === 'next_meal';
+
+  const systemPrompt = `你是温暖的 AI 健康伙伴"卡卡"。当前时间：${timeStr}。语气温柔治愈，绝不制造身材焦虑，不要说教。
+
+严格返回如下 JSON 格式，所有字段都必须有值，不含任何额外文字：
+{
+  "has_data": true,
+  "next_action_trigger": "${mode}",
+  "today_review": "${isNextMeal ? '今日温柔小复盘（80字内，治愈语气，高情绪价值）' : '今日温柔复盘（100字内，治愈语气，关注趋势与情绪）'}",
+  "predictive_advice": {
+    "title": "${isNextMeal ? '下一餐轻负担锦囊' : '明日治愈锦囊'}",
+    "energy_target": "${isNextMeal ? '本餐建议摄入热量范围（含具体数字）' : '明日建议摄入热量范围（含具体数字）'}",
+    "diet_strategy": "${isNextMeal ? '具体的下一餐饮食建议（80字内，轻盈不负重）' : '具体的明日饮食建议（100字内，温柔可执行）'}",
+    "exercise_suggestion": "${isNextMeal ? '饭后轻松小运动（50字内，零负担）' : '明日轻松可执行的运动建议（60字内）'}"
+  },
+  "health_tips": "${isNextMeal ? '今日暖心小贴士（60字内，温暖实用，与饮水或久坐相关）' : '明日健康小贴士（60字内，温暖实用）'}"
+}`;
+
+  const response = await fetch(DEEPSEEK_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `今日数据：\n${todaySummary}\n\n近期历史：\n${historyContext}` },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.7,
+    }),
+  });
+  if (!response.ok) throw new Error(`API 请求失败 (${response.status})`);
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content) as SmartAdviceResult;
+}
+
+export interface WaterLogItem {
+  raw_text: string;
+  amount: number;
+}
+
+export interface WaterContentResult {
+  has_data: boolean;
+  analysis_summary: string;
+  data: {
+    water_logs: WaterLogItem[];
+  };
+}
+
+export async function parseWaterContent(
+  apiKey: string,
+  userInput: string,
+): Promise<WaterContentResult> {
+  const response = await fetch(DEEPSEEK_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content: `你是一个含水量计算助手。用户会输入任意食物或饮料描述，可能包含多项。请根据含水率常识，计算每项的实际含水量（ml），拆分为独立条目。
+
+含水率参考：纯水100%，茶/美式95~98%，豆浆95%，黄瓜96%，西瓜92%，草莓91%，冬瓜汤90~95%，鸡汤88~92%，牛奶87%，拿铁/奶茶80~88%，果汁85~90%，粥/稀饭85%，苹果86%，梨85%，香蕉75%。
+
+规则：每项单独一个对象；raw_text为该项简洁描述（≤10字）；amount为实际含水量纯整数ml，最小50；无分量时按常见份量推断（一杯250ml，一碗300ml，一个水果200g）；analysis_summary为1句温暖小结（≤40字）。
+
+严格返回JSON，不含额外文字：{"has_data":true,"analysis_summary":"...","data":{"water_logs":[{"raw_text":"...","amount":数字}]}}`,
+        },
+        { role: 'user', content: userInput },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+    }),
+  });
+  if (!response.ok) throw new Error(`API 请求失败 (${response.status})`);
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content) as WaterContentResult;
+}
+
 export interface PredictiveAdvice {
   title: string;
   energy_target: string;
   diet_strategy: string;
   exercise_suggestion: string;
+  health_tips?: string;
 }
 
 export interface PredictiveAdviceResult {
@@ -190,9 +291,41 @@ export async function generatePredictiveAdvice(
   apiKey: string,
   todaySummary: string,
   historyContext: string,
+  mode: 'next_meal' | 'tomorrow',
 ): Promise<PredictiveAdviceResult> {
-  const hour = new Date().getHours();
-  const timeHint = hour < 20 ? '用户当前时间在晚饭前或晚饭时，建议给出下一餐（next_meal）建议' : '用户当前时间较晚，建议给出翌日（tomorrow）建议';
+  const now = new Date();
+  const timeStr = now.toLocaleString('zh-CN', { hour12: false });
+
+  const systemPrompt = mode === 'next_meal'
+    ? `你是温暖的 AI 健康伙伴"卡卡"。当前时间：${timeStr}。用户三餐尚未全部完成，请给出下一餐轻负担锦囊和健康小贴士。语气温柔，不制造焦虑。
+
+严格返回如下 JSON 格式：
+{
+  "has_data": true,
+  "today_review": "今日温柔小复盘（80字内，治愈语气）",
+  "next_action_trigger": "next_meal",
+  "predictive_advice": {
+    "title": "下一餐轻负担锦囊",
+    "energy_target": "本餐建议摄入热量范围描述",
+    "diet_strategy": "具体的下一餐饮食建议（80字内，轻盈不负重）",
+    "exercise_suggestion": "饭后轻松小运动（50字内）",
+    "health_tips": "今日健康小贴士（60字内，温暖实用）"
+  }
+}`
+    : `你是温暖的 AI 健康伙伴"卡卡"。当前时间：${timeStr}。用户三餐已完成或时间较晚，请给出明日治愈锦囊。语气温柔，不制造焦虑。
+
+严格返回如下 JSON 格式：
+{
+  "has_data": true,
+  "today_review": "今日温柔小复盘（100字内，治愈语气）",
+  "next_action_trigger": "tomorrow",
+  "predictive_advice": {
+    "title": "明日治愈锦囊",
+    "energy_target": "明日建议摄入热量范围描述",
+    "diet_strategy": "具体的明日饮食建议（100字内）",
+    "exercise_suggestion": "轻松可执行的运动建议（60字内）"
+  }
+}`;
 
   const response = await fetch(DEEPSEEK_ENDPOINT, {
     method: 'POST',
@@ -200,28 +333,8 @@ export async function generatePredictiveAdvice(
     body: JSON.stringify({
       model: 'deepseek-chat',
       messages: [
-        {
-          role: 'system',
-          content: `你是温暖的 AI 健康伙伴"卡卡"。${timeHint}。
-请基于今日数据与近期历史，给出前瞻性、治愈系的饮食运动建议。语气温柔，不制造焦虑。
-
-严格返回如下 JSON 格式：
-{
-  "has_data": true,
-  "today_review": "今日温柔小复盘（100字内，治愈语气）",
-  "next_action_trigger": "tomorrow" 或 "next_meal",
-  "predictive_advice": {
-    "title": "明日治愈锦囊 或 下一餐锦囊",
-    "energy_target": "建议摄入热量范围描述",
-    "diet_strategy": "具体的饮食建议（100字内）",
-    "exercise_suggestion": "轻松可执行的运动建议（60字内）"
-  }
-}`,
-        },
-        {
-          role: 'user',
-          content: `今日数据：\n${todaySummary}\n\n近期历史：\n${historyContext}`,
-        },
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: `今日数据：\n${todaySummary}\n\n近期历史：\n${historyContext}` },
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,

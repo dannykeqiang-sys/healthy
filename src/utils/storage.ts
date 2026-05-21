@@ -32,14 +32,32 @@ export function loadAllRecords(): Record<string, DailyRecord> {
 export function loadTodayRecord(): DailyRecord {
   const all = loadAllRecords();
   const today = getTodayKey();
-  return all[today] || {
+  const existing = all[today];
+  if (existing) {
+    return { ...existing, water: existing.water ?? [] };
+  }
+  return {
     date: today,
     meals: { breakfast: [], lunch: [], dinner: [], snack: [] } as MealRecord,
     exercises: [],
+    water: [],
   };
 }
 
 export function saveTodayRecord(record: DailyRecord): void {
+  const all = loadAllRecords();
+  all[record.date] = record;
+  localStorage.setItem(RECORDS_KEY, JSON.stringify(all));
+}
+
+export function loadRecordByDate(date: string): DailyRecord | null {
+  const all = loadAllRecords();
+  const existing = all[date];
+  if (existing) return { ...existing, water: existing.water ?? [] };
+  return null;
+}
+
+export function saveRecordByDate(record: DailyRecord): void {
   const all = loadAllRecords();
   all[record.date] = record;
   localStorage.setItem(RECORDS_KEY, JSON.stringify(all));

@@ -21,6 +21,34 @@ const SYSTEM_PROMPT = `你是一位温暖、包容、不评判的 AI 健康伙�
 任务：在用户完成当日所有数据录入后，基于多日趋势数据，给出温柔的饮食运动优化建议，并传递高情绪价值，让用户充满动力。
 格式：分段落，每段落不超过100字，配合emoji让文字更有温度，不超过400字总。`;
 
+function getReviewCacheKey(date: string): string {
+  return `daily_review_cache_${date}`;
+}
+
+function loadReviewCache(date: string): string | null {
+  try {
+    return localStorage.getItem(getReviewCacheKey(date));
+  } catch {
+    return null;
+  }
+}
+
+function saveReviewCache(date: string, text: string): void {
+  try {
+    localStorage.setItem(getReviewCacheKey(date), text);
+  } catch {
+    // ignore
+  }
+}
+
+function clearReviewCache(date: string): void {
+  try {
+    localStorage.removeItem(getReviewCacheKey(date));
+  } catch {
+    // ignore
+  }
+}
+
 function buildUserMessage(profile: UserProfile, today: DailyRecord, history: DailyRecord[]): string {
   const bmr = calcBMR(profile);
   const target = calcTargetCalories(profile);
@@ -69,12 +97,33 @@ export default function DailyReviewPanel({ profile, record, apiKey, isComplete }
   const textRef = useRef('');
 
   useEffect(() => {
-    setStatus(isComplete ? 'ready' : 'locked');
-    if (!isComplete) { setText(''); textRef.current = ''; }
-  }, [isComplete]);
+    if (!isComplete) {
+      setStatus('locked');
+      setText('');
+      textRef.current = '';
+      return;
+    }
+    const cached = loadReviewCache(record.date);
+    if (cached) {
+      setText(cached);
+      textRef.current = cached;
+      setStatus('done');
+    } else {
+      setStatus('ready');
+    }
+  }, [isComplete, record.date]);
 
   const handleGenerate = async () => {
     if (!profile || !apiKey) return;
+
+    const cached = loadReviewCache(record.date);
+    if (cached) {
+      setText(cached);
+      textRef.current = cached;
+      setStatus('done');
+      return;
+    }
+
     setStatus('loading');
     setText('');
     textRef.current = '';
@@ -93,7 +142,10 @@ export default function DailyReviewPanel({ profile, record, apiKey, isComplete }
             textRef.current += chunk;
             setText(textRef.current);
           },
-          onDone: () => setStatus('done'),
+          onDone: () => {
+            saveReviewCache(record.date, textRef.current);
+            setStatus('done');
+          },
           onError: (err) => {
             setErrorMsg(err.message);
             setStatus('error');
@@ -104,6 +156,13 @@ export default function DailyReviewPanel({ profile, record, apiKey, isComplete }
       setErrorMsg(err instanceof Error ? err.message : '未知错误');
       setStatus('error');
     }
+  };
+
+  const handleRegen = () => {
+    clearReviewCache(record.date);
+    setText('');
+    textRef.current = '';
+    setStatus('ready');
   };
 
   if (status === 'locked') {
@@ -229,7 +288,7 @@ export default function DailyReviewPanel({ profile, record, apiKey, isComplete }
           <Button
             variant="outline"
             size="sm"
-            onClick={() => { setText(''); textRef.current = ''; setStatus('ready'); }}
+            onClick={handleRegen}
             className="text-xs cursor-pointer border-border text-muted-foreground hover:text-foreground"
           >
             重新生成

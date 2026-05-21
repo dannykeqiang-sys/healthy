@@ -32,10 +32,18 @@ export interface ExerciseItem {
   calories: number;
 }
 
+export interface WaterItem {
+  id: string;
+  amount: number;
+  note: string;
+  time: string;
+}
+
 export interface DailyRecord {
   date: string;
   meals: MealRecord;
   exercises: ExerciseItem[];
+  water: WaterItem[];
 }
 
 export interface BMIResult {

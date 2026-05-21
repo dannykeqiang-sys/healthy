@@ -48,6 +48,17 @@ export async function idbGetRecentRecords(days: number): Promise<DailyRecord[]> 
   return results;
 }
 
+export async function idbGetRecord(date: string): Promise<DailyRecord | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, 'readonly');
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.get(date);
+    req.onerror = () => reject(req.error);
+    req.onsuccess = () => resolve((req.result as DailyRecord) ?? null);
+  });
+}
+
 export async function idbGetAllRecords(): Promise<DailyRecord[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {

@@ -1,0 +1,29 @@
+[    1221ms] [ERROR] Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?%s%s 
+
+Check the render method of `Primitive.div.SlotClone`. 
+    at DialogOverlay (http://localhost:3000/js/main.js:154679:26)
+    at http://localhost:3000/js/main.js:190864:17
+    at http://localhost:3000/js/main.js:190834:17
+    at http://localhost:3000/js/main.js:190793:17
+    at http://localhost:3000/js/main.js:190598:24
+    at Presence (http://localhost:3000/js/main.js:190636:13)
+    at Provider (http://localhost:3000/js/main.js:184354:21)
+    at DialogPortal (http://localhost:3000/js/main.js:184536:13)
+    at DialogPortal (http://localhost:3000/js/main.js:154651:28)
+    at DialogContent (http://localhost:3000/js/main.js:154694:26)
+    at Provider (http://localhost:3000/js/main.js:184354:21)
+    at Dialog (http://localhost:3000/js/main.js:184488:13)
+    at Dialog (http://localhost:3000/js/main.js:154623:22)
+    at UserProfilePanel (http://localhost:3000/js/main.js:159362:29)
+    at div
+    at Home (http://localhost:3000/js/main.js:160529:83)
+    at RouteWrapper (http://localhost:3000/js/main.js:176554:13)
+    at Component (http://localhost:3000/js/main.js:154251:101)
+    at RenderedRoute (http://localhost:3000/js/main.js:142877:11)
+    at RenderErrorBoundary (http://localhost:3000/js/main.js:142828:9)
+    at DataRoutes (http://localhost:3000/js/main.js:141662:11)
+    at Router (http://localhost:3000/js/main.js:143406:21)
+    at RouterProvider (http://localhost:3000/js/main.js:141439:11)
+    at App (http://localhost:3000/js/main.js:176098:16)
+    at ClientRouter (http://localhost:3000/js/main.js:176216:13) @ http://localhost:3000/js/main.js:118797
+[  260337ms] [ERROR] Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it. @ http://localhost:3000/js/main.js:118797
