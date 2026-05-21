@@ -18,12 +18,13 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
+    "radix-ui": "^1.4.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "@ali/aone-super-plugins": "^0.1.4",
+    "@ali/aone-super-plugins": "0.1.7",
     "@ali/eslint-config-att": "^1.0.6",
     "@ali/ice-plugin-def": "^1.2.4",
     "@ali/ice-plugin-standards": "^1.0.0",
