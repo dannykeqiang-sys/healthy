@@ -16,6 +16,11 @@ export default function SettingsPanel({ open, apiKey, onClose, onSave }: Setting
   const [inputKey, setInputKey] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
 
+  // 同步 apiKey prop 到 inputKey 状态
+  useEffect(() => {
+    setInputKey(apiKey);
+  }, [apiKey]);
+
   const handleSave = () => {
     onSave(inputKey.trim());
     onClose();
