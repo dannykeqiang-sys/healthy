@@ -225,8 +225,8 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
           ref={containerRef}
           className="meal-carousel-scroll relative flex overflow-x-auto snap-x snap-mandatory gap-4 py-6"
           style={{
-            paddingLeft: 'calc(50vw - min(41vw, 200px))',
-            paddingRight: 'calc(50vw - min(41vw, 200px))',
+            paddingLeft: 'calc(50% - min(41vw, 200px))',
+            paddingRight: 'calc(50% - min(41vw, 200px))',
             scrollbarWidth: 'none',
             zIndex: 2,
           }}
