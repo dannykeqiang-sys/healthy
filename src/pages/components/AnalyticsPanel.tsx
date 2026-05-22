@@ -5,6 +5,7 @@ import { idbGetRecord } from '../../utils/indexedDB';
 import { loadAllRecords } from '../../utils/storage';
 import CalorieDashboard from './CalorieDashboard';
 import BMICard from './BMICard';
+import TodayNutritionCard from './TodayNutritionCard';
 import type { DayStats } from './AIHealingCard';
 import WeeklyStatsModal from './WeeklyStatsModal';
 
@@ -179,10 +180,11 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
     <div className="space-y-4">
       <CalorieDashboard profile={profile} record={record} dateLabel={dateLabel} />
       {profile && <BMICard profile={profile} />}
+      <TodayNutritionCard record={record} />
 
       <button
         onClick={() => setModalOpen(true)}
-        className="w-full text-left cursor-pointer"
+        className="w-full text-left cursor-pointer group"
         disabled={loading}
       >
         <div
