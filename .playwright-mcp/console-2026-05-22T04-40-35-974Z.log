@@ -1,0 +1,120 @@
+[     544ms] [ERROR] Warning: React has detected a change in the order of Hooks called by %s. This will lead to bugs and errors if not fixed. For more information, read the Rules of Hooks: https://reactjs.org/link/rules-of-hooks
+
+   Previous render            Next render
+   ------------------------------------------------------
+%s   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+%s Home 1. useState                   useState
+2. useState                   useState
+3. useState                   useState
+4. useState                   useState
+5. useState                   useState
+6. useState                   useState
+7. useState                   useState
+8. useState                   useState
+9. useState                   useState
+10. useState                  useState
+11. useState                  useState
+12. useRef                    useRef
+13. useRef                    useRef
+14. useRef                    useRef
+15. useEffect                 useEffect
+16. useEffect                 useEffect
+17. useCallback               useCallback
+18. useCallback               useCallback
+19. useCallback               useCallback
+20. useCallback               useCallback
+21. useCallback               useCallback
+22. useCallback               useCallback
+23. useCallback               useCallback
+24. useCallback               useCallback
+25. useCallback               useCallback
+26. useCallback               useCallback
+27. useCallback               useCallback
+28. useCallback               useCallback
+29. useCallback               useCallback
+30. useCallback               useCallback
+31. useCallback               useCallback
+32. useCallback               useCallback
+33. useCallback               useCallback
+34. useCallback               useCallback
+35. useCallback               useCallback
+36. undefined                 useCallback
+ 
+    at Home (http://localhost:3000/js/main.js:177685:83)
+    at RouteWrapper (http://localhost:3000/js/main.js:194137:13)
+    at Component (http://localhost:3000/js/main.js:154882:101)
+    at RenderedRoute (http://localhost:3000/js/main.js:142877:11)
+    at RenderErrorBoundary (http://localhost:3000/js/main.js:142828:9)
+    at DataRoutes (http://localhost:3000/js/main.js:141662:11)
+    at Router (http://localhost:3000/js/main.js:143406:21)
+    at RouterProvider (http://localhost:3000/js/main.js:141439:11)
+    at App (http://localhost:3000/js/main.js:193681:16)
+    at ClientRouter (http://localhost:3000/js/main.js:193799:13) @ http://localhost:3000/js/main.js:118797
+[     549ms] Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (http://localhost:3000/js/main.js:130132:49)
+    at updateCallback (http://localhost:3000/js/main.js:130637:20)
+    at Object.useCallback (http://localhost:3000/js/main.js:131184:20)
+    at useCallback (http://localhost:3000/js/main.js:146617:27)
+    at Home (http://localhost:3000/js/main.js:178014:86)
+    at renderWithHooks (http://localhost:3000/js/main.js:130001:24)
+    at updateFunctionComponent (http://localhost:3000/js/main.js:133065:24)
+    at beginWork (http://localhost:3000/js/main.js:134412:24)
+    at HTMLUnknownElement.callCallback (http://localhost:3000/js/main.js:122021:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:3000/js/main.js:122055:22)
+[     549ms] Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (http://localhost:3000/js/main.js:130132:49)
+    at updateCallback (http://localhost:3000/js/main.js:130637:20)
+    at Object.useCallback (http://localhost:3000/js/main.js:131184:20)
+    at useCallback (http://localhost:3000/js/main.js:146617:27)
+    at Home (http://localhost:3000/js/main.js:178014:86)
+    at renderWithHooks (http://localhost:3000/js/main.js:130001:24)
+    at updateFunctionComponent (http://localhost:3000/js/main.js:133065:24)
+    at beginWork (http://localhost:3000/js/main.js:134412:24)
+    at beginWork$1 (http://localhost:3000/js/main.js:138248:20)
+    at performUnitOfWork (http://localhost:3000/js/main.js:137680:20)
+[     549ms] Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (http://localhost:3000/js/main.js:130132:49)
+    at updateCallback (http://localhost:3000/js/main.js:130637:20)
+    at Object.useCallback (http://localhost:3000/js/main.js:131184:20)
+    at useCallback (http://localhost:3000/js/main.js:146617:27)
+    at Home (http://localhost:3000/js/main.js:178014:86)
+    at renderWithHooks (http://localhost:3000/js/main.js:130001:24)
+    at updateFunctionComponent (http://localhost:3000/js/main.js:133065:24)
+    at beginWork (http://localhost:3000/js/main.js:134412:24)
+    at HTMLUnknownElement.callCallback (http://localhost:3000/js/main.js:122021:22)
+    at Object.invokeGuardedCallbackDev (http://localhost:3000/js/main.js:122055:22)
+[     550ms] Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (http://localhost:3000/js/main.js:130132:49)
+    at updateCallback (http://localhost:3000/js/main.js:130637:20)
+    at Object.useCallback (http://localhost:3000/js/main.js:131184:20)
+    at useCallback (http://localhost:3000/js/main.js:146617:27)
+    at Home (http://localhost:3000/js/main.js:178014:86)
+    at renderWithHooks (http://localhost:3000/js/main.js:130001:24)
+    at updateFunctionComponent (http://localhost:3000/js/main.js:133065:24)
+    at beginWork (http://localhost:3000/js/main.js:134412:24)
+    at beginWork$1 (http://localhost:3000/js/main.js:138248:20)
+    at performUnitOfWork (http://localhost:3000/js/main.js:137680:20)
+[     550ms] [ERROR] The above error occurred in the <ErrorComponentWithRouter> component:
+
+    at ErrorComponentWithRouter (http://localhost:3000/js/main.js:195004:83)
+    at RouteErrorComponent
+    at RenderErrorBoundary (http://localhost:3000/js/main.js:142828:9)
+    at DataRoutes (http://localhost:3000/js/main.js:141662:11)
+    at Router (http://localhost:3000/js/main.js:143406:21)
+    at RouterProvider (http://localhost:3000/js/main.js:141439:11)
+    at App (http://localhost:3000/js/main.js:193681:16)
+    at ClientRouter (http://localhost:3000/js/main.js:193799:13)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/js/main.js:132420
+[     551ms] Error: Rendered more hooks than during the previous render.
+    at updateWorkInProgressHook (http://localhost:3000/js/main.js:130132:49)
+    at updateCallback (http://localhost:3000/js/main.js:130637:20)
+    at Object.useCallback (http://localhost:3000/js/main.js:131184:20)
+    at useCallback (http://localhost:3000/js/main.js:146617:27)
+    at Home (http://localhost:3000/js/main.js:178014:86)
+    at renderWithHooks (http://localhost:3000/js/main.js:130001:24)
+    at updateFunctionComponent (http://localhost:3000/js/main.js:133065:24)
+    at beginWork (http://localhost:3000/js/main.js:134412:24)
+    at beginWork$1 (http://localhost:3000/js/main.js:138248:20)
+    at performUnitOfWork (http://localhost:3000/js/main.js:137680:20)
