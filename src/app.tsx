@@ -1,3 +1,4 @@
+import './global.css';
 import { defineAppConfig } from 'ice';
 import { defineChildConfig } from '@ice/plugin-icestark/types';
 import { aesInit } from '@ali/mkt-universal-aes';

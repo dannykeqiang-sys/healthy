@@ -1,0 +1,86 @@
+[    1210ms] [ERROR] Warning: Function components cannot be given refs. Attempts to access this ref will fail. Did you mean to use React.forwardRef()?%s%s 
+
+Check the render method of `Primitive.div.SlotClone`. 
+    at DialogOverlay (http://localhost:3000/js/main.js:154716:26)
+    at http://localhost:3000/js/main.js:192055:17
+    at http://localhost:3000/js/main.js:192025:17
+    at http://localhost:3000/js/main.js:191984:17
+    at http://localhost:3000/js/main.js:191789:24
+    at Presence (http://localhost:3000/js/main.js:191827:13)
+    at Provider (http://localhost:3000/js/main.js:185545:21)
+    at DialogPortal (http://localhost:3000/js/main.js:185727:13)
+    at DialogPortal (http://localhost:3000/js/main.js:154688:28)
+    at DialogContent (http://localhost:3000/js/main.js:154731:26)
+    at Provider (http://localhost:3000/js/main.js:185545:21)
+    at Dialog (http://localhost:3000/js/main.js:185679:13)
+    at Dialog (http://localhost:3000/js/main.js:154660:22)
+    at UserProfilePanel (http://localhost:3000/js/main.js:160461:29)
+    at div
+    at Home (http://localhost:3000/js/main.js:161630:83)
+    at RouteWrapper (http://localhost:3000/js/main.js:177745:13)
+    at Component (http://localhost:3000/js/main.js:154288:101)
+    at RenderedRoute (http://localhost:3000/js/main.js:142877:11)
+    at RenderErrorBoundary (http://localhost:3000/js/main.js:142828:9)
+    at DataRoutes (http://localhost:3000/js/main.js:141662:11)
+    at Router (http://localhost:3000/js/main.js:143406:21)
+    at RouterProvider (http://localhost:3000/js/main.js:141439:11)
+    at App (http://localhost:3000/js/main.js:177289:16)
+    at ClientRouter (http://localhost:3000/js/main.js:177407:13) @ http://localhost:3000/js/main.js:118797
+[  312811ms] [ERROR] Warning: You are calling ReactDOMClient.createRoot() on a container that has already been passed to createRoot() before. Instead, call root.render() on the existing root instead if you want to update it. @ http://localhost:3000/js/main.js:118797
+[  371311ms] NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.
+    at removeChildFromContainer (http://localhost:3000/js/main.js:127077:24)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135947:48)
+    at recursivelyTraverseDeletionEffects (http://localhost:3000/js/main.js:135924:13)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135997:17)
+    at commitDeletionEffects (http://localhost:3000/js/main.js:135915:9)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136089:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
+[  371314ms] NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.
+    at removeChildFromContainer (http://localhost:3000/js/main.js:127077:24)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135947:48)
+    at recursivelyTraverseDeletionEffects (http://localhost:3000/js/main.js:135924:13)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135997:17)
+    at commitDeletionEffects (http://localhost:3000/js/main.js:135915:9)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136089:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
+[  371317ms] NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.
+    at removeChildFromContainer (http://localhost:3000/js/main.js:127077:24)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135947:48)
+    at recursivelyTraverseDeletionEffects (http://localhost:3000/js/main.js:135924:13)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135997:17)
+    at commitDeletionEffects (http://localhost:3000/js/main.js:135915:9)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136089:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
+[  371318ms] [ERROR] The above error occurred in the <ErrorComponentWithRouter> component:
+
+    at ErrorComponentWithRouter (http://localhost:3000/js/main.js:178612:83)
+    at RouteErrorComponent
+    at RenderErrorBoundary (http://localhost:3000/js/main.js:142828:9)
+    at DataRoutes (http://localhost:3000/js/main.js:141662:11)
+    at Router (http://localhost:3000/js/main.js:143406:21)
+    at RouterProvider (http://localhost:3000/js/main.js:141439:11)
+    at App (http://localhost:3000/js/main.js:177289:16)
+    at ClientRouter (http://localhost:3000/js/main.js:177407:13)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries. @ http://localhost:3000/js/main.js:132420
+[  371323ms] NotFoundError: Failed to execute 'removeChild' on 'Node': The node to be removed is not a child of this node.
+    at removeChildFromContainer (http://localhost:3000/js/main.js:127077:24)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135947:48)
+    at recursivelyTraverseDeletionEffects (http://localhost:3000/js/main.js:135924:13)
+    at commitDeletionEffectsOnFiber (http://localhost:3000/js/main.js:135997:17)
+    at commitDeletionEffects (http://localhost:3000/js/main.js:135915:9)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136089:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
+    at commitMutationEffectsOnFiber (http://localhost:3000/js/main.js:136115:17)
+    at recursivelyTraverseMutationEffects (http://localhost:3000/js/main.js:136099:17)
