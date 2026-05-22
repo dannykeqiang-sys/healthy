@@ -35,34 +35,9 @@ function loadReviewCache(date: string): string | null {
 
 function saveReviewCache(date: string, text: string): void {
   try {
-    const cacheEntry = {
-      text,
-      timestamp: Date.now(),
-    };
-    localStorage.setItem(getReviewCacheKey(date), JSON.stringify(cacheEntry));
+    localStorage.setItem(getReviewCacheKey(date), text);
   } catch {
     // ignore
-  }
-}
-
-function loadReviewCache(date: string): string | null {
-  try {
-    const raw = localStorage.getItem(getReviewCacheKey(date));
-    if (!raw) return null;
-    
-    const cacheEntry = JSON.parse(raw);
-    // 缓存有效期30天
-    const CACHE_EXPIRY_DAYS = 30;
-    const isExpired = Date.now() - cacheEntry.timestamp > CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
-    
-    if (isExpired) {
-      clearReviewCache(date);
-      return null;
-    }
-    
-    return cacheEntry.text;
-  } catch {
-    return null;
   }
 }
 

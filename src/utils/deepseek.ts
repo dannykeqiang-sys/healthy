@@ -178,6 +178,9 @@ export async function estimateCalories(
 export interface ParsedFoodItem {
   name: string;
   calories: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
 }
 
 export interface ParsedExerciseItem {
@@ -210,24 +213,25 @@ export async function parseMixedMeals(
       messages: [
         {
           role: 'system',
-          content: `你是一个温暖的饮食记录助手。用户会用自然语言描述今天吃了什么，可能混合了多个餐段的内容，也可能包含运动信息。请认真分析并将每种食物/饮品拆分为独立条目，估算各自卡路里；运动同样拆分为独立条目。语气要温暖鼓励。
+          content: `你是一个温暖的饮食记录助手。用户会用自然语言描述今天吃了什么，可能混合了多个餐段的内容，也可能包含运动信息。请认真分析并将每种食物/饮品拆分为独立条目，估算各自卡路里和三大宏营养素；运动同样拆分为独立条目。语气要温暖鼓励。
 
 严格返回如下 JSON 格式，不含任何额外文字：
 {
   "has_data": true,
   "analysis_summary": "温暖的一句话总结",
   "data": {
-    "breakfast": [{ "name": "食物名称", "calories": 数字 }],
-    "lunch": [{ "name": "食物名称", "calories": 数字 }],
-    "dinner": [{ "name": "食物名称", "calories": 数字 }],
-    "snack": [{ "name": "食物名称", "calories": 数字 }],
+    "breakfast": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
+    "lunch": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
+    "dinner": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
+    "snack": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
     "exercises": [{ "name": "运动名称", "calories": 数字 }],
     "water_logs": [{ "raw_text": "液体简称", "amount": 含水量毫升整数 }]
   }
 }
 
 规则：
-- 每种食物/饮品单独一个对象，calories 为纯整数
+- 每种食物/饮品单独一个对象，calories/protein/carbs/fat 均为纯数字（克/千卡）
+- protein=蛋白质(g)、carbs=碳水化合物(g)、fat=脂肪(g)，根据常见食物营养数据库估算
 - 无数据的餐段返回空数组 []
 - exercises 包含用户提及的所有运动，无运动则返回 []
 - 时间线索（早上/中午/晚上/下午）决定归属餐段，无明确时间线索默认归入对应合理餐段

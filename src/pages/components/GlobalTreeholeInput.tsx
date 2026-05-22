@@ -8,6 +8,7 @@ import type { FoodItem, MealType, DailyRecord, ExerciseItem, WaterItem } from '.
 interface GlobalTreeholeInputProps {
   apiKey: string;
   record: DailyRecord;
+  isViewingToday?: boolean;
   onMealsUpdate: (updates: { mealType: MealType; item: FoodItem }[]) => void;
   onMealsReplace: (updates: { mealType: MealType; item: FoodItem }[]) => void;
   onExercisesUpdate: (exercises: ExerciseItem[]) => void;
@@ -54,6 +55,7 @@ interface PendingResult {
 
 export default function GlobalTreeholeInput({
   apiKey,
+  isViewingToday = true,
   onMealsUpdate,
   onMealsReplace,
   onExercisesUpdate,
@@ -139,6 +141,9 @@ export default function GlobalTreeholeInput({
               id: crypto.randomUUID(),
               name: safeName,
               calories: food.calories,
+              protein: food.protein,
+              carbs: food.carbs,
+              fat: food.fat,
             },
           });
           items.push({ label: MEAL_LABELS[key], name: safeName, calories: food.calories });
@@ -180,7 +185,6 @@ export default function GlobalTreeholeInput({
       }
 
       setPending({ mealUpdates, exerciseItems, waterItems, summaryItems: items, summary: result.analysis_summary });
-      setText('');
       setStatus('confirm');
     } catch {
       setErrorMsg('AI 解析失败，请检查网络或 API Key 是否有效');
@@ -229,8 +233,8 @@ export default function GlobalTreeholeInput({
           <Sparkles className="w-3.5 h-3.5 text-primary" />
         </div>
         <div>
-          <p className="text-sm font-semibold text-foreground">今日吃了什么？</p>
-          <p className="text-xs text-muted-foreground">随口说说，AI 帮你自动分配到各餐</p>
+          <p className="text-sm font-semibold text-foreground">{isViewingToday ? '今日吃了什么？' : '当日吃了什么？'}</p>
+          <p className="text-xs text-muted-foreground">{isViewingToday ? '今天吃了什么、去哪挥汗了、喝了什么？大白话告诉我，AI 自动分类回填～' : '当日吃了什么、去哪挥汗了、喝了什么？大白话告诉我，AI 自动分类回填～'}</p>
         </div>
       </div>
 
@@ -274,7 +278,7 @@ export default function GlobalTreeholeInput({
                 className="flex-1 flex items-center justify-center gap-1.5 py-2.5 px-3 rounded-xl bg-secondary/10 hover:bg-secondary/20 border border-secondary/25 text-secondary text-sm font-medium transition-all cursor-pointer active:scale-95"
               >
                 <RefreshCw className="w-4 h-4" />
-                覆盖今日记录
+                {isViewingToday ? '覆盖今日记录' : '覆盖当日记录'}
               </button>
             </div>
             <button

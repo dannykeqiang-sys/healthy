@@ -6,7 +6,7 @@ import WaterCardSlot from './WaterCardSlot';
 import type { MealSlotConfig } from './MealCardSlot';
 import type { ExerciseSlotConfig } from './ExerciseCardSlot';
 import type { WaterSlotConfig } from './WaterCardSlot';
-import type { DailyRecord, MealType, FoodItem, ExerciseItem, WaterItem } from '../../types';
+import type { DailyRecord, MealType, FoodItem, ExerciseItem, WaterItem, UserProfile } from '../../types';
 
 export type CarouselCardType = MealType | 'exercise' | 'water';
 
@@ -101,17 +101,24 @@ const WATER_CONFIG: WaterSlotConfig & { pageBg: string } = {
   imageUrl: 'https://s41.ax1x.com/2026/05/21/pmSDGKf.jpg',
 };
 
-const ALL_PAGE_BG = [...MEAL_CONFIGS.map(c => c.pageBg), EXERCISE_CONFIG.pageBg, WATER_CONFIG.pageBg];
+const ALL_IMAGES = [
+  ...MEAL_CONFIGS.map(c => c.imageUrl ?? ''),
+  EXERCISE_CONFIG.imageUrl ?? '',
+  WATER_CONFIG.imageUrl ?? '',
+];
+
 const ALL_ACCENT = [...MEAL_CONFIGS.map(c => c.accent), EXERCISE_CONFIG.accent, WATER_CONFIG.accent];
 
 interface MealCarouselProps {
   record: DailyRecord;
   apiKey: string;
+  isViewingToday?: boolean;
+  profile?: UserProfile | null;
   onChange: (record: DailyRecord) => void;
 }
 
 const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
-  ({ record, apiKey, onChange }, ref) => {
+  ({ record, apiKey, isViewingToday = true, profile, onChange }, ref) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [highlightedType, setHighlightedType] = useState<CarouselCardType | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -189,21 +196,39 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
       onChange({ ...record, water: (record.water || []).map(w => w.id === item.id ? item : w) });
     }, [record, onChange]);
 
-    const bg = ALL_PAGE_BG[activeIndex] ?? ALL_PAGE_BG[0];
     const accent = ALL_ACCENT[activeIndex] ?? ALL_ACCENT[0];
 
     return (
-      <div
-        className="relative rounded-3xl overflow-hidden"
-        style={{ background: bg, transition: 'background 0.7s ease' }}
-      >
+      <div className="relative rounded-3xl overflow-hidden">
+        {ALL_IMAGES.map((src, i) => (
+          <div
+            key={src + i}
+            className="absolute inset-0 bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${src})`,
+              opacity: activeIndex === i ? 1 : 0,
+              transition: 'opacity 0.7s ease',
+              zIndex: 0,
+            }}
+          />
+        ))}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.72) 100%)',
+            backdropFilter: 'blur(2px)',
+            zIndex: 1,
+          }}
+        />
+
         <div
           ref={containerRef}
-          className="meal-carousel-scroll flex overflow-x-auto snap-x snap-mandatory gap-4 py-6"
+          className="meal-carousel-scroll relative flex overflow-x-auto snap-x snap-mandatory gap-4 py-6"
           style={{
             paddingLeft: 'calc(50vw - min(41vw, 200px))',
             paddingRight: 'calc(50vw - min(41vw, 200px))',
             scrollbarWidth: 'none',
+            zIndex: 2,
           }}
         >
           {MEAL_CONFIGS.map((cfg, i) => (
@@ -218,6 +243,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
                 apiKey={apiKey}
                 isActive={activeIndex === i}
                 isHighlighted={highlightedType === cfg.type}
+                profile={profile}
                 onAdd={item => handleFoodAdd(cfg.type, item)}
                 onRemove={id => handleFoodRemove(cfg.type, id)}
                 onUpdate={item => handleFoodUpdate(cfg.type, item)}
@@ -248,6 +274,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
               apiKey={apiKey}
               isActive={activeIndex === 5}
               isHighlighted={highlightedType === 'water'}
+              isViewingToday={isViewingToday}
               onAdd={handleWaterAdd}
               onRemove={handleWaterRemove}
               onUpdate={handleWaterUpdate}
@@ -255,7 +282,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-1.5 pb-5">
+        <div className="relative flex items-center justify-center gap-1.5 pb-5" style={{ zIndex: 2 }}>
           {CARD_ORDER.map((type, i) => {
             const isActive = activeIndex === i;
             const dotAccent = ALL_ACCENT[i];
@@ -267,7 +294,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
                 style={{
                   width: isActive ? '22px' : '6px',
                   height: '6px',
-                  backgroundColor: isActive ? dotAccent : `${accent}30`,
+                  backgroundColor: isActive ? dotAccent : `${accent}40`,
                   transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
                 }}
               />

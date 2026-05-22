@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, Minus, Flame, Dumbbell, Apple } from 'lucide-
 interface CalorieDashboardProps {
   profile: UserProfile | null;
   record: DailyRecord;
+  dateLabel?: string;
 }
 
 function RingChart({ value, max, color, size = 140 }: { value: number; max: number; color: string; size?: number }) {
@@ -61,7 +62,7 @@ function StatCard({
   );
 }
 
-export default function CalorieDashboard({ profile, record }: CalorieDashboardProps) {
+export default function CalorieDashboard({ profile, record, dateLabel = '今日' }: CalorieDashboardProps) {
   const totalIntake = Object.values(record.meals).flat().reduce((sum, f) => sum + f.calories, 0);
   const totalBurn = record.exercises.reduce((sum, e) => sum + e.calories, 0);
   const targetCalories = profile ? calcTargetCalories(profile) : 2000;
@@ -72,9 +73,9 @@ export default function CalorieDashboard({ profile, record }: CalorieDashboardPr
   const isBalance = Math.abs(surplus) < 50;
 
   const getSurplusInfo = () => {
-    if (isBalance) return { icon: Minus, color: '#A3B899', label: '热量平衡', text: '你今天的热量管理非常棒！维持现状就是成功！', bg: 'bg-primary/5' };
-    if (isOver) return { icon: TrendingUp, color: '#EBB193', label: '热量盈余', text: `今天盈余 ${surplusAbs} 大卡，适当增加运动消耗效果更好`, bg: 'bg-secondary/5' };
-    return { icon: TrendingDown, color: '#7CB9E8', label: '热量缺口', text: `今天缺口 ${surplusAbs} 大卡，你正在向目标体重迈进！`, bg: 'bg-blue-50' };
+    if (isBalance) return { icon: Minus, color: '#A3B899', label: '热量平衡', text: `你${dateLabel}的热量管理非常棒！维持现状就是成功！`, bg: 'bg-primary/5' };
+    if (isOver) return { icon: TrendingUp, color: '#EBB193', label: '热量盈余', text: `${dateLabel}盈余 ${surplusAbs} 大卡，适当增加运动消耗效果更好`, bg: 'bg-secondary/5' };
+    return { icon: TrendingDown, color: '#7CB9E8', label: '热量缺口', text: `${dateLabel}缺口 ${surplusAbs} 大卡，你正在向目标体重迈进！`, bg: 'bg-blue-50' };
   };
 
   const surplusInfo = getSurplusInfo();
@@ -97,7 +98,7 @@ export default function CalorieDashboard({ profile, record }: CalorieDashboardPr
           <div className="flex-1 w-full space-y-3">
             <div>
               <div className="flex justify-between text-sm mb-1">
-                <span className="text-muted-foreground">今日摄入</span>
+                <span className="text-muted-foreground">{dateLabel}摄入</span>
                 <span className="font-semibold text-primary">{totalIntake} kcal</span>
               </div>
               <div className="h-2.5 rounded-full bg-muted overflow-hidden">
@@ -127,21 +128,6 @@ export default function CalorieDashboard({ profile, record }: CalorieDashboardPr
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="text-muted-foreground">净摄入</span>
-                <span className="font-semibold text-secondary">{netCalories} kcal</span>
-              </div>
-              <div className="h-2.5 rounded-full bg-muted overflow-hidden">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min((netCalories / targetCalories) * 100, 100)}%`,
-                    background: 'linear-gradient(to right, #EBB193, #d8936d)',
-                  }}
-                />
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -159,7 +145,7 @@ export default function CalorieDashboard({ profile, record }: CalorieDashboardPr
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatCard icon={Apple} label="今日摄入" value={totalIntake} unit="大卡" color="#A3B899" bg="bg-primary/5" />
+        <StatCard icon={Apple} label={`${dateLabel}摄入`} value={totalIntake} unit="大卡" color="#A3B899" bg="bg-primary/5" />
         <StatCard icon={Dumbbell} label="运动消耗" value={totalBurn} unit="大卡" color="#7CB9E8" bg="bg-blue-50" />
         <StatCard icon={Flame} label="目标热量" value={targetCalories} unit="大卡/天" color="#EBB193" bg="bg-secondary/5" />
       </div>

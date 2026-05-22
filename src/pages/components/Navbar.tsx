@@ -24,7 +24,7 @@ export default function Navbar({ profile, onEditProfile, onOpenSettings }: Navba
             <Flame className="w-5 h-5 text-white" />
           </div>
           <div>
-            <h1 className="text-lg font-bold tracking-tight text-foreground">卡路里管家</h1>
+            <h1 className="text-lg font-bold tracking-tight text-foreground">燃烧我的卡路里</h1>
             <p className="text-xs text-muted-foreground hidden sm:block">{today}</p>
           </div>
         </div>
