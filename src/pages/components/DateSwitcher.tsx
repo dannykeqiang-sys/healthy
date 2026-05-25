@@ -1,4 +1,5 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import { ChevronLeft } from 'lucide-react';
 
 interface DateSwitcherProps {
   selectedDate: string;
@@ -15,58 +16,79 @@ function getRecentDates(count: number): string[] {
   return dates;
 }
 
-function formatDateChip(dateStr: string): { day: string; sub: string; isToday: boolean } {
+function formatDateChip(dateStr: string): { day: string; label: string; isToday: boolean } {
   const today = new Date().toISOString().split('T')[0];
   const d = new Date(dateStr + 'T00:00:00');
   const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
   return {
     day: String(d.getDate()),
-    sub: isToday(dateStr, today) ? '今天' : `周${WEEKDAYS[d.getDay()]}`,
-    isToday: isToday(dateStr, today),
+    label: dateStr === today ? '今' : WEEKDAYS[d.getDay()],
+    isToday: dateStr === today,
   };
 }
 
-function isToday(date: string, today: string) {
-  return date === today;
-}
-
 export default function DateSwitcher({ selectedDate, onDateChange }: DateSwitcherProps) {
-  const dates = getRecentDates(14);
+  const allDates = getRecentDates(14);
+  const recentDates = allDates.slice(7);
+  const olderDates = allDates.slice(0, 7);
+  const [showOlder, setShowOlder] = useState(false);
+
+  const visibleDates = showOlder ? allDates : recentDates;
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const idx = dates.indexOf(selectedDate);
+    const idx = visibleDates.indexOf(selectedDate);
     if (idx < 0 || !scrollRef.current) return;
     const children = scrollRef.current.children;
-    if (children[idx]) {
-      (children[idx] as HTMLElement).scrollIntoView({
+    const targetChild = children[idx];
+    if (targetChild) {
+      (targetChild as HTMLElement).scrollIntoView({
         behavior: 'smooth',
         block: 'nearest',
         inline: 'center',
       });
     }
-  }, [selectedDate, dates]);
+  }, [selectedDate, visibleDates, showOlder]);
+
+  const selectedIsOlder = olderDates.includes(selectedDate);
 
   return (
-    <div>
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => setShowOlder(v => !v)}
+        className="flex-shrink-0 flex flex-col items-center justify-center w-8 h-9 rounded-xl transition-all cursor-pointer active:scale-90 border border-border/60"
+        style={{
+          backgroundColor: selectedIsOlder ? 'var(--primary)' : 'rgba(255,255,255,0.7)',
+          color: selectedIsOlder ? 'white' : 'var(--muted-foreground)',
+        }}
+        title={showOlder ? '收起' : '查看更早日期'}
+      >
+        <ChevronLeft
+          className="w-3 h-3"
+          style={{ transform: showOlder ? 'rotate(180deg)' : 'none', transition: 'transform 0.25s' }}
+        />
+        <span className="text-[8px] font-medium leading-none mt-0.5">{showOlder ? '收' : '早'}</span>
+      </button>
+
       <div
         ref={scrollRef}
-        className="date-switcher-scroll flex gap-2 overflow-x-auto py-1 px-0.5"
+        className="date-switcher-scroll flex gap-1 overflow-x-auto flex-1"
+        style={{ scrollbarWidth: 'none' }}
       >
-        {dates.map(date => {
-          const { day, sub, isToday } = formatDateChip(date);
+        {visibleDates.map(date => {
+          const { day, label, isToday } = formatDateChip(date);
           const isSelected = date === selectedDate;
           return (
             <button
               key={date}
               onClick={() => onDateChange(date)}
-              className="flex flex-col items-center flex-shrink-0 w-12 py-2 rounded-2xl transition-all cursor-pointer active:scale-90"
+              className="flex flex-col items-center flex-shrink-0 w-9 py-1 rounded-xl transition-all cursor-pointer active:scale-90"
               style={{
                 backgroundColor: isSelected
                   ? 'var(--primary)'
                   : isToday
-                  ? 'rgba(163,184,153,0.15)'
-                  : 'white',
+                  ? 'rgba(163,184,153,0.18)'
+                  : 'rgba(255,255,255,0.6)',
                 color: isSelected
                   ? 'white'
                   : isToday
@@ -75,19 +97,18 @@ export default function DateSwitcher({ selectedDate, onDateChange }: DateSwitche
                 border: isSelected
                   ? 'none'
                   : isToday
-                  ? '1px solid rgba(163,184,153,0.5)'
+                  ? '1px solid rgba(163,184,153,0.45)'
                   : '1px solid var(--border)',
-                boxShadow: isSelected ? '0 2px 8px rgba(163,184,153,0.35)' : 'none',
+                boxShadow: isSelected ? '0 2px 6px rgba(163,184,153,0.38)' : 'none',
               }}
             >
-              <span className="text-[10px] font-medium leading-none mb-1.5">{sub}</span>
-              <span className="text-[15px] font-bold leading-none">{day}</span>
+              <span className="text-[9px] font-medium leading-none mb-1">{label}</span>
+              <span className="text-[13px] font-bold leading-none">{day}</span>
             </button>
           );
         })}
       </div>
-      <style>{`.date-switcher-scroll::-webkit-scrollbar { display: none; }
-        .date-switcher-scroll { scrollbar-width: none; }`}</style>
+      <style>{`.date-switcher-scroll::-webkit-scrollbar { display: none; }`}</style>
     </div>
   );
 }

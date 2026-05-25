@@ -6,6 +6,7 @@ import { estimateCalories } from '../../utils/deepseek';
 import { safeNormalizeString } from '../../utils/stringUtils';
 import { calcTargetCalories } from '../../utils/calculations';
 import type { FoodItem, UserProfile } from '../../types';
+import AIRecognitionCelebration from './AIRecognitionCelebration';
 
 export interface MealSlotConfig {
   label: string;
@@ -33,6 +34,13 @@ interface MealCardSlotProps {
   onUpdate: (item: FoodItem) => void;
 }
 
+function getMealRatio(label: string): number {
+  if (label.includes('早')) return 0.25;
+  if (label.includes('午')) return 0.35;
+  if (label.includes('晚')) return 0.30;
+  return 0.10;
+}
+
 interface MacroComboBarProps {
   protein: number;
   carbs: number;
@@ -40,73 +48,57 @@ interface MacroComboBarProps {
   proteinTarget: number;
   carbsTarget: number;
   fatTarget: number;
+  mealRatio: number;
 }
 
-function MacroComboBar({ protein, carbs, fat, proteinTarget, carbsTarget, fatTarget }: MacroComboBarProps) {
-  const pKcal = protein * 4;
-  const cKcal = carbs * 4;
-  const fKcal = fat * 9;
-  const totalKcal = pKcal + cKcal + fKcal;
-  const targetKcal = proteinTarget * 4 + carbsTarget * 4 + fatTarget * 9;
-  const fillPct = targetKcal > 0 ? Math.min((totalKcal / targetKcal) * 100, 100) : 0;
-
-  const pShare = totalKcal > 0 ? pKcal / totalKcal : 0;
-  const cShare = totalKcal > 0 ? cKcal / totalKcal : 0;
-  const fShare = totalKcal > 0 ? fKcal / totalKcal : 0;
-
+function MacroComboBar({ protein, carbs, fat, proteinTarget, carbsTarget, fatTarget, mealRatio }: MacroComboBarProps) {
   const hasMacros = protein > 0 || carbs > 0 || fat > 0;
+  const mealProtein = Math.max(1, Math.round(proteinTarget * mealRatio));
+  const mealCarbs = Math.max(1, Math.round(carbsTarget * mealRatio));
+  const mealFat = Math.max(1, Math.round(fatTarget * mealRatio));
+
+  const bars = [
+    { label: '蛋白质', actual: protein, target: mealProtein, color: '#3B82F6', bg: 'rgba(59,130,246,0.12)' },
+    { label: '碳水', actual: carbs, target: mealCarbs, color: '#F59E0B', bg: 'rgba(245,158,11,0.12)' },
+    { label: '脂肪', actual: fat, target: mealFat, color: '#EF4444', bg: 'rgba(239,68,68,0.12)' },
+  ];
 
   return (
-    <div className="mt-3 px-0.5">
-      <div className="flex items-center justify-between mb-1.5">
-        <p className="text-[10px] text-muted-foreground/60 font-medium">本餐营养素</p>
-        {hasMacros && (
-          <p className="text-[9px] text-muted-foreground/40 tabular-nums">{Math.round(totalKcal)} kcal</p>
-        )}
+    <div className="mt-3 px-0.5 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-[10px] text-muted-foreground/60 font-medium">当餐营养对比</p>
+        <p className="text-[9px] text-muted-foreground/40">推荐 {Math.round(mealRatio * 100)}% 日摄入</p>
       </div>
 
-      <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(0,0,0,0.06)' }}>
-        <div
-          className="h-full flex rounded-full overflow-hidden transition-all duration-700"
-          style={{ width: `${fillPct}%` }}
-        >
-          {hasMacros ? (
-            <>
-              <div className="h-full bg-blue-400" style={{ width: `${pShare * 100}%` }} />
-              <div className="h-full bg-amber-400" style={{ width: `${cShare * 100}%` }} />
-              <div className="h-full bg-red-400" style={{ width: `${fShare * 100}%` }} />
-            </>
-          ) : (
-            <div className="h-full w-full" style={{ backgroundColor: 'rgba(0,0,0,0.12)' }} />
-          )}
-        </div>
-      </div>
+      {bars.map(bar => {
+        const pct = Math.min((bar.actual / bar.target) * 100, 100);
+        const isOver = bar.actual > bar.target;
+        const displayColor = isOver ? '#EF4444' : bar.color;
+        return (
+          <div key={bar.label}>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-1.5">
+                <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ backgroundColor: bar.color }} />
+                <span className="text-[9px] text-muted-foreground/70 font-medium">{bar.label}</span>
+              </div>
+              <span className="text-[9px] tabular-nums font-semibold" style={{ color: hasMacros ? displayColor : 'var(--muted-foreground)' }}>
+                {hasMacros ? `${bar.actual}g` : '—'} / {bar.target}g
+              </span>
+            </div>
+            <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: bar.bg }}>
+              {hasMacros && (
+                <div
+                  className="h-full rounded-full transition-all duration-700"
+                  style={{ width: `${pct}%`, backgroundColor: displayColor }}
+                />
+              )}
+            </div>
+          </div>
+        );
+      })}
 
-      {hasMacros ? (
-        <div className="flex items-start justify-between mt-2">
-          <div className="text-center flex-1">
-            <p className="text-[9px] text-muted-foreground/50">蛋白</p>
-            <p className="text-[10px] font-bold text-blue-500 tabular-nums leading-snug">{protein}g</p>
-            <p className="text-[8px] text-muted-foreground/35 tabular-nums">/ {proteinTarget}g</p>
-          </div>
-          <div className="text-center flex-1">
-            <p className="text-[9px] text-muted-foreground/50">碳水</p>
-            <p className="text-[10px] font-bold text-amber-500 tabular-nums leading-snug">{carbs}g</p>
-            <p className="text-[8px] text-muted-foreground/35 tabular-nums">/ {carbsTarget}g</p>
-          </div>
-          <div className="text-center flex-1">
-            <p className="text-[9px] text-muted-foreground/50">脂肪</p>
-            <p className="text-[10px] font-bold text-red-400 tabular-nums leading-snug">{fat}g</p>
-            <p className="text-[8px] text-muted-foreground/35 tabular-nums">/ {fatTarget}g</p>
-          </div>
-          <div className="text-center flex-1">
-            <p className="text-[9px] text-muted-foreground/50">完成</p>
-            <p className="text-[10px] font-bold tabular-nums leading-snug" style={{ color: fillPct >= 100 ? '#22C55E' : 'var(--muted-foreground)' }}>{Math.round(fillPct)}%</p>
-            <p className="text-[8px] text-muted-foreground/35">日目标</p>
-          </div>
-        </div>
-      ) : (
-        <p className="text-[9px] text-muted-foreground/35 text-center mt-1">用 AI 估算食物可自动获取三大营养素</p>
+      {!hasMacros && (
+        <p className="text-[9px] text-muted-foreground/35 text-center pt-0.5">用 AI 估算食物可自动获取三大营养素</p>
       )}
     </div>
   );
@@ -127,10 +119,12 @@ export default function MealCardSlot({
   const [calories, setCalories] = useState('');
   const [estimating, setEstimating] = useState(false);
   const [toast, setToast] = useState('');
+  const [toastType, setToastType] = useState<'info' | 'success'>('info');
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editCalories, setEditCalories] = useState('');
   const [expandedItemId, setExpandedItemId] = useState<string | null>(null);
+  const [aiCelebration, setAiCelebration] = useState<{ foodName: string; calories: number } | null>(null);
 
   const Icon = config.icon;
   const total = items.reduce((s, f) => s + f.calories, 0);
@@ -142,10 +136,28 @@ export default function MealCardSlot({
   const proteinTarget = Math.round(targetCalories * 0.30 / 4);
   const carbsTarget = Math.round(targetCalories * 0.45 / 4);
   const fatTarget = Math.round(targetCalories * 0.25 / 9);
+  const mealRatio = getMealRatio(config.label);
 
-  const showToast = (msg: string) => {
+  const AI_PRAISES = [
+    '已帮你估好了，记录很重要',
+    '你对自己的关注令人感动',
+    '科学饮食从每一口开始',
+    '每次记录都在靠近目标',
+    '好的身材都是这样积累的',
+    '你比大多数人更了解自己',
+  ];
+
+  const ADD_PRAISES = [
+    '加入啦！吃得开心，也要吃得明白',
+    '记录下来了，继续保持',
+    '每一口都被看见，很棒',
+    '饮食有记录，身体有感知',
+  ];
+
+  const showToast = (msg: string, type: 'info' | 'success' = 'info') => {
     setToast(msg);
-    setTimeout(() => setToast(''), 3000);
+    setToastType(type);
+    setTimeout(() => setToast(''), 3500);
   };
 
   const handleAdd = () => {
@@ -153,6 +165,8 @@ export default function MealCardSlot({
     onAdd({ id: crypto.randomUUID(), name: safeNormalizeString(name.trim()), calories: Number(calories) });
     setName('');
     setCalories('');
+    const praise = ADD_PRAISES[Math.floor(Math.random() * ADD_PRAISES.length)];
+    showToast(praise, 'success');
   };
 
   const handleAIEstimate = async () => {
@@ -162,9 +176,9 @@ export default function MealCardSlot({
       const result = await estimateCalories(apiKey, name.trim());
       setName(safeNormalizeString(result.food_name));
       setCalories(String(result.calories));
-      showToast(`AI 估算约 ${result.calories} kcal`);
+      setAiCelebration({ foodName: result.food_name, calories: result.calories });
     } catch {
-      showToast('AI 估算失败，请手动输入');
+      showToast('AI 估算失败，请手动输入热量', 'info');
     } finally {
       setEstimating(false);
     }
@@ -267,6 +281,7 @@ export default function MealCardSlot({
               proteinTarget={proteinTarget}
               carbsTarget={carbsTarget}
               fatTarget={fatTarget}
+              mealRatio={mealRatio}
             />
           )}
         </div>
@@ -289,7 +304,7 @@ export default function MealCardSlot({
                   autoFocus
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                   className="flex-1 min-w-0 text-sm bg-transparent border-b outline-none py-0.5"
                   style={{ borderColor: `${config.accent}50` }}
                 />
@@ -297,7 +312,7 @@ export default function MealCardSlot({
                   type="number"
                   value={editCalories}
                   onChange={e => setEditCalories(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                   className="w-14 text-sm bg-transparent border-b outline-none text-right py-0.5"
                   style={{ borderColor: `${config.accent}50` }}
                 />
@@ -397,19 +412,29 @@ export default function MealCardSlot({
 
         <div className="px-5 pt-3 pb-5 space-y-2">
           {toast && (
-            <div className="text-xs text-center py-1.5 px-3 rounded-full bg-foreground/85 text-background leading-snug">
+            <div
+              className="text-xs text-center py-2 px-3 rounded-2xl leading-snug transition-all duration-300"
+              style={{
+                background: toastType === 'success'
+                  ? `linear-gradient(135deg, ${config.accent}18, ${config.accent}0a)`
+                  : 'rgba(0,0,0,0.08)',
+                border: toastType === 'success' ? `1px solid ${config.accent}30` : '1px solid rgba(0,0,0,0.08)',
+                color: toastType === 'success' ? config.accent : 'var(--muted-foreground)',
+                animation: 'toastSlideIn 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+              }}
+            >
               {toast}
             </div>
           )}
+          <VoiceInputButton apiKey={apiKey} color={config.accent} onResult={handleVoiceResult} />
           <div className="flex items-center gap-1.5">
-            <VoiceInputButton apiKey={apiKey} color={config.accent} onResult={handleVoiceResult} />
             <Input
               value={name}
               onChange={e => setName(e.target.value)}
               onBlur={handleNameBlur}
               placeholder={config.placeholder}
               className="flex-1 bg-white/72 border-white/60 text-sm h-10 rounded-xl min-w-0"
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd(); }}
             />
             <button
               onClick={handleAIEstimate}
@@ -430,7 +455,7 @@ export default function MealCardSlot({
               onChange={e => setCalories(e.target.value)}
               placeholder="kcal"
               className="w-16 bg-white/72 border-white/60 text-sm h-10 rounded-xl flex-shrink-0"
-              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd(); }}
             />
             <button
               onClick={handleAdd}
@@ -448,7 +473,19 @@ export default function MealCardSlot({
           from { opacity: 0; transform: translateY(10px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0)    scale(1); }
         }
+        @keyframes toastSlideIn {
+          from { opacity: 0; transform: translateY(6px) scale(0.96); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
       `}</style>
+
+      {aiCelebration && (
+        <AIRecognitionCelebration
+          foodName={aiCelebration.foodName}
+          calories={aiCelebration.calories}
+          onDismiss={() => setAiCelebration(null)}
+        />
+      )}
     </div>
   );
 }

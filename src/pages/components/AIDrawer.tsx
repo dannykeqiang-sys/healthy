@@ -19,6 +19,7 @@ interface AIDrawerProps {
   onExercisesUpdate: (exercises: ExerciseItem[]) => void;
   onExercisesReplace: (exercises: ExerciseItem[]) => void;
   onWaterUpdate: (items: WaterItem[]) => void;
+  onRecordSuccess?: () => void;
 }
 
 const QUICK_QUESTIONS = [
@@ -133,6 +134,7 @@ export default function AIDrawer({
   onExercisesUpdate,
   onExercisesReplace,
   onWaterUpdate,
+  onRecordSuccess,
 }: AIDrawerProps) {
   const [activeTab, setActiveTab] = useState<'record' | 'chat'>('record');
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -214,8 +216,14 @@ export default function AIDrawer({
       onClick={onClose}
     >
       <div
-        className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-3xl bg-white overflow-hidden"
-        style={{ maxHeight: '92vh', animation: 'ai-drawer-up 0.32s cubic-bezier(0.4,0,0.2,1) both' }}
+        className="absolute bottom-0 left-0 right-0 flex flex-col rounded-t-3xl overflow-hidden"
+        style={{
+          maxHeight: '92vh',
+          animation: 'ai-drawer-up 0.32s cubic-bezier(0.4,0,0.2,1) both',
+          background: 'rgba(255,255,255,0.88)',
+          backdropFilter: 'blur(28px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(180%)',
+        }}
         onClick={e => e.stopPropagation()}
       >
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -275,6 +283,7 @@ export default function AIDrawer({
                 onExercisesUpdate={onExercisesUpdate}
                 onExercisesReplace={onExercisesReplace}
                 onWaterUpdate={onWaterUpdate}
+                onRecordSuccess={onRecordSuccess}
               />
             </div>
           )}
@@ -357,7 +366,7 @@ export default function AIDrawer({
                     value={input}
                     onChange={e => setInput(e.target.value)}
                     onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
+                      if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                         e.preventDefault();
                         sendMessage(input);
                       }

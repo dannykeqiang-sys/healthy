@@ -3,11 +3,12 @@ import { Sparkles, ChevronRight, Calendar, Flame, Droplets, Dumbbell } from 'luc
 import type { UserProfile, DailyRecord } from '../../types';
 import { idbGetRecord } from '../../utils/indexedDB';
 import { loadAllRecords } from '../../utils/storage';
-import CalorieDashboard from './CalorieDashboard';
-import BMICard from './BMICard';
-import TodayNutritionCard from './TodayNutritionCard';
+import { loadWeightRecords } from './TodayWeightCard';
 import type { DayStats } from './AIHealingCard';
 import WeeklyStatsModal from './WeeklyStatsModal';
+import WeeklyCharts from './WeeklyCharts';
+import TodayDualRingBar from './TodayDualRingBar';
+import InflammationIndexCard from './InflammationIndexCard';
 
 interface AnalyticsPanelProps {
   profile: UserProfile | null;
@@ -92,6 +93,7 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
       setLoading(true);
       const dates = getWeekdays();
       const allLS = loadAllRecords();
+      const weightRecords = loadWeightRecords();
       const computed: DayStats[] = [];
 
       for (const date of dates) {
@@ -136,6 +138,7 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
             carbs,
             fat,
             exercises,
+            weight: weightRecords[date],
           });
         } else {
           computed.push({
@@ -151,6 +154,7 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
             carbs: 0,
             fat: 0,
             exercises: [],
+            weight: weightRecords[date],
           });
         }
       }
@@ -167,7 +171,13 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
   const daysOnTarget = stats.filter(d => d.intake > 0 && d.intake <= targetCalories).length;
   const waterDays = stats.filter(d => d.water >= 1500).length;
   const exerciseDays = stats.filter(d => d.burn > 0).length;
-  const baseWeight = profile?.weight ?? 0;
+  const today = new Date().toISOString().split('T')[0];
+  const todayWeightRecords = loadWeightRecords();
+  const currentJournalDate = journalDate ?? today;
+  const baseWeight = todayWeightRecords[today] ?? profile?.weight ?? 0;
+  const currentDayWeight = todayWeightRecords[currentJournalDate];
+
+  const totalWater = (record.water || []).reduce((s, w) => s + w.amount, 0);
 
   const weekMetrics = [
     { label: '记录', value: activeDays.length, icon: Calendar, color: '#8B5CF6' },
@@ -178,11 +188,25 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
 
   return (
     <div className="space-y-4">
-      <CalorieDashboard profile={profile} record={record} dateLabel={dateLabel} />
-      {profile && <BMICard profile={profile} />}
-      <TodayNutritionCard record={record} />
+      <TodayDualRingBar
+        profile={profile}
+        record={record}
+        dateLabel={dateLabel}
+        currentWeight={currentDayWeight}
+      />
+
+      {!loading && stats.length > 0 && (
+        <WeeklyCharts stats={stats} targetCalories={targetCalories} />
+      )}
+
+      <InflammationIndexCard
+        profile={profile}
+        record={record}
+        waterAmount={totalWater}
+      />
 
       <button
+        data-tutorial="chart"
         onClick={() => setModalOpen(true)}
         className="w-full text-left cursor-pointer group"
         disabled={loading}

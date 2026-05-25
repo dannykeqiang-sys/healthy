@@ -30,7 +30,7 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #FFF9F0, #FEEDD5, #FFF5E6)',
     time: '07:00 ~ 09:00',
     placeholder: '如：燕麦粥、鸡蛋、牛奶',
-    imageUrl: 'https://s41.ax1x.com/2026/05/21/pmSDYqS.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&q=80',
   },
   {
     type: 'lunch',
@@ -45,7 +45,7 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #F2FFF5, #D5F8E2, #EDFBF2)',
     time: '11:30 ~ 13:30',
     placeholder: '如：米饭、鸡胸肉、炒蔬菜',
-    imageUrl: 'https://s41.ax1x.com/2026/05/21/pmSD12t.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
   },
   {
     type: 'dinner',
@@ -60,7 +60,7 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #F0F5FF, #D8E8FF, #EBF3FF)',
     time: '17:30 ~ 19:30',
     placeholder: '如：清蒸鱼、豆腐、绿叶菜',
-    imageUrl: 'https://s41.ax1x.com/2026/05/21/pmSDJr8.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=80',
   },
   {
     type: 'snack',
@@ -75,7 +75,7 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #FFF2F8, #FBE2F1, #FFF0F8)',
     time: '随时',
     placeholder: '如：水果、坚果、酸奶',
-    imageUrl: 'https://s41.ax1x.com/2026/05/21/pmSD3xP.jpg',
+    imageUrl: 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=800&q=80',
   },
 ];
 
@@ -98,7 +98,7 @@ const WATER_CONFIG: WaterSlotConfig & { pageBg: string } = {
   accent: '#0EA5E9',
   pageBg: 'linear-gradient(145deg, #EFF9FF, #E0F4FD, #F0F9FF)',
   time: '全天',
-  imageUrl: 'https://s41.ax1x.com/2026/05/21/pmSDGKf.jpg',
+  imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=800&q=80',
 };
 
 const ALL_IMAGES = [
@@ -114,11 +114,13 @@ interface MealCarouselProps {
   apiKey: string;
   isViewingToday?: boolean;
   profile?: UserProfile | null;
+  journalDate?: string;
   onChange: (record: DailyRecord) => void;
+  onWaterReplace?: (items: WaterItem[]) => void;
 }
 
 const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
-  ({ record, apiKey, isViewingToday = true, profile, onChange }, ref) => {
+  ({ record, apiKey, isViewingToday = true, profile, journalDate, onChange, onWaterReplace }, ref) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [highlightedType, setHighlightedType] = useState<CarouselCardType | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
@@ -196,6 +198,14 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
       onChange({ ...record, water: (record.water || []).map(w => w.id === item.id ? item : w) });
     }, [record, onChange]);
 
+    const handleWaterReplaceLocal = useCallback((items: WaterItem[]) => {
+      if (onWaterReplace) {
+        onWaterReplace(items);
+      } else {
+        onChange({ ...record, water: items });
+      }
+    }, [record, onChange, onWaterReplace]);
+
     const accent = ALL_ACCENT[activeIndex] ?? ALL_ACCENT[0];
 
     return (
@@ -259,6 +269,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
               items={record.exercises}
               isActive={activeIndex === 4}
               isHighlighted={highlightedType === 'exercise'}
+              journalDate={journalDate}
               onAdd={handleExerciseAdd}
               onRemove={handleExerciseRemove}
               onUpdate={handleExerciseUpdate}
@@ -278,6 +289,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
               onAdd={handleWaterAdd}
               onRemove={handleWaterRemove}
               onUpdate={handleWaterUpdate}
+              onReplace={handleWaterReplaceLocal}
             />
           </div>
         </div>

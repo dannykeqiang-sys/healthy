@@ -3,16 +3,17 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
-import { Eye, EyeOff, Key, ExternalLink } from 'lucide-react';
+import { Eye, EyeOff, Key, ExternalLink, LogOut } from 'lucide-react';
 
 interface SettingsPanelProps {
   open: boolean;
   apiKey: string;
   onClose: () => void;
   onSave: (key: string) => void;
+  onLogout: () => void;
 }
 
-export default function SettingsPanel({ open, apiKey, onClose, onSave }: SettingsPanelProps) {
+export default function SettingsPanel({ open, apiKey, onClose, onSave, onLogout }: SettingsPanelProps) {
   const [inputKey, setInputKey] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
 
@@ -94,6 +95,23 @@ export default function SettingsPanel({ open, apiKey, onClose, onSave }: Setting
             >
               保存配置
             </Button>
+          </div>
+
+          <div className="pt-2 border-t border-border/50">
+            <button
+              onClick={() => {
+                if (window.confirm('确定要退出吗？将清除本地数据并返回引导页重新设置。')) {
+                  onLogout();
+                }
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm text-destructive/80 hover:text-destructive hover:bg-destructive/5 transition-all cursor-pointer border border-dashed border-destructive/25 hover:border-destructive/40"
+            >
+              <LogOut className="w-4 h-4" />
+              退出登录，重新设置
+            </button>
+            <p className="text-[11px] text-muted-foreground/50 text-center mt-1.5">
+              退出后本地记录将被清除，可重新引导设置
+            </p>
           </div>
         </div>
       </DialogContent>

@@ -1,5 +1,8 @@
-import { Activity, Zap } from 'lucide-react';
-import type { DailyRecord, FoodItem } from '../../types';
+import { useState } from 'react';
+import { Activity, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import type { DailyRecord, FoodItem, UserProfile } from '../../types';
+import { calcTargetCalories } from '../../utils/calculations';
+import MacroRingChart from './MacroRingChart';
 
 const ANTI_KW = [
   '蔬菜', '菠菜', '西兰花', '芹菜', '胡萝卜', '番茄', '西红柿', '黄瓜', '生菜',
@@ -39,37 +42,134 @@ function getScoreInfo(score: number): { label: string; color: string; desc: stri
   return { label: '偏高炎症', color: '#DC2626', desc: '减少加工食品，多吃蔬果和深海鱼' };
 }
 
+const MACRO_REASSURANCE: Record<string, { text: string; tip: string }> = {
+  protein: {
+    text: '蛋白质稍微超标没关系',
+    tip: '运动后多补充蛋白质有助于肌肉修复，今天如果有锻炼就不用担心',
+  },
+  carbs: {
+    text: '碳水今天摄入稍多',
+    tip: '可以减少晚餐的精制主食，多选择粗粮或蔬菜替代',
+  },
+  fat: {
+    text: '脂肪略微超标',
+    tip: '优先选择坚果、鱼类等优质脂肪来源，减少油炸和加工食品',
+  },
+};
+
 interface TodayNutritionCardProps {
   record: DailyRecord;
+  profile?: UserProfile | null;
 }
 
-export default function TodayNutritionCard({ record }: TodayNutritionCardProps) {
+interface MacroRowProps {
+  label: string;
+  actual: number;
+  target: number;
+  color: string;
+  hasData: boolean;
+  foods?: FoodItem[];
+  macroKey?: 'protein' | 'carbs' | 'fat';
+}
+
+function MacroRow({ label, actual, target, color, hasData, foods, macroKey }: MacroRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const pct = target > 0 ? Math.min((actual / target) * 100, 100) : 0;
+  const isOver = actual > target && target > 0;
+  const displayColor = isOver ? '#EF4444' : color;
+
+  const topFoods = isOver && foods && macroKey
+    ? [...foods]
+        .filter(f => (f[macroKey] ?? 0) > 0)
+        .sort((a, b) => (b[macroKey] ?? 0) - (a[macroKey] ?? 0))
+        .slice(0, 3)
+    : [];
+
+  const reassurance = macroKey ? MACRO_REASSURANCE[macroKey] : null;
+
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: color }} />
+          <span className="text-xs font-medium text-foreground">{label}</span>
+        </div>
+        <div className="flex items-center gap-1 text-xs">
+          <span className="font-bold tabular-nums" style={{ color: displayColor }}>
+            {hasData ? actual : '—'}
+          </span>
+          <span className="text-muted-foreground/50">/</span>
+          <span className="text-muted-foreground tabular-nums">{target}g</span>
+          {isOver && topFoods.length > 0 && (
+            <button
+              onClick={() => setExpanded(v => !v)}
+              className="ml-1 flex items-center gap-0.5 text-[10px] font-semibold cursor-pointer transition-colors"
+              style={{ color: displayColor }}
+            >
+              {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            </button>
+          )}
+        </div>
+      </div>
+      <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: `${color}18` }}>
+        <div
+          className="h-full rounded-full transition-all duration-700"
+          style={{
+            width: hasData ? `${pct}%` : '0%',
+            backgroundColor: displayColor,
+          }}
+        />
+      </div>
+
+      {isOver && expanded && topFoods.length > 0 && reassurance && macroKey && (
+        <div
+          className="mt-1.5 rounded-xl p-2.5 space-y-2"
+          style={{ backgroundColor: `${displayColor}08`, border: `1px solid ${displayColor}20` }}
+        >
+          <p className="text-[10px] font-semibold" style={{ color: displayColor }}>
+            {reassurance.text}，主要来源：
+          </p>
+          <div className="space-y-1">
+            {topFoods.map((food, i) => (
+              <div key={food.id ?? i} className="flex items-center justify-between">
+                <span className="text-[10px] text-foreground/70 truncate max-w-[60%]">{food.name}</span>
+                <span className="text-[10px] tabular-nums font-medium" style={{ color: displayColor }}>
+                  {Math.round(food[macroKey] ?? 0)}g
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground leading-relaxed pt-0.5 border-t border-border/30">
+            {reassurance.tip}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function TodayNutritionCard({ record, profile }: TodayNutritionCardProps) {
   const allFoods = Object.values(record.meals).flat();
   const protein = Math.round(allFoods.reduce((s, f) => s + (f.protein ?? 0), 0));
   const carbs = Math.round(allFoods.reduce((s, f) => s + (f.carbs ?? 0), 0));
   const fat = Math.round(allFoods.reduce((s, f) => s + (f.fat ?? 0), 0));
-  const gramTotal = protein + carbs + fat;
+  const intake = Math.round(allFoods.reduce((s, f) => s + f.calories, 0));
 
-  const proteinPct = gramTotal > 0 ? Math.round((protein / gramTotal) * 100) : 33;
-  const carbsPct = gramTotal > 0 ? Math.round((carbs / gramTotal) * 100) : 34;
-  const fatPct = gramTotal > 0 ? 100 - proteinPct - carbsPct : 33;
+  const targetCalories = profile ? calcTargetCalories(profile) : 2000;
+  const proteinTarget = Math.round(targetCalories * 0.30 / 4);
+  const carbsTarget = Math.round(targetCalories * 0.45 / 4);
+  const fatTarget = Math.round(targetCalories * 0.25 / 9);
 
   const score = calcInflammationScore(allFoods);
   const { label: scoreLabel, color: scoreColor, desc: scoreDesc } = getScoreInfo(score);
   const hasData = allFoods.length > 0;
-
-  const macros = [
-    { label: '蛋白质', value: protein, unit: 'g', color: '#F97316', pct: proteinPct },
-    { label: '碳水', value: carbs, unit: 'g', color: '#6366F1', pct: carbsPct },
-    { label: '脂肪', value: fat, unit: 'g', color: '#0EA5E9', pct: fatPct },
-  ];
 
   const indicatorPct = score >= 0 ? Math.max(3, Math.min(97, 100 - score)) : 50;
 
   return (
     <div className="rounded-2xl bg-white border border-border shadow-sm overflow-hidden">
       <div className="p-4 pb-3">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <div
             className="w-7 h-7 rounded-lg flex items-center justify-center"
             style={{ background: 'linear-gradient(135deg, #F97316, #6366F1)' }}
@@ -77,49 +177,63 @@ export default function TodayNutritionCard({ record }: TodayNutritionCardProps) 
             <Activity className="w-3.5 h-3.5 text-white" />
           </div>
           <p className="text-sm font-bold text-foreground">今日营养概览</p>
+          {!hasData && (
+            <span className="ml-auto text-[10px] text-muted-foreground/50">记录饮食后查看</span>
+          )}
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-4">
-          {macros.map(m => (
-            <div
-              key={m.label}
-              className="flex flex-col items-center py-3 rounded-xl"
-              style={{ backgroundColor: `${m.color}0f` }}
-            >
-              <p className="text-xl font-bold leading-none" style={{ color: m.color }}>
-                {hasData ? m.value : '—'}
-              </p>
-              <p className="text-[10px] text-muted-foreground mt-1">{m.unit} {m.label}</p>
-            </div>
-          ))}
-        </div>
-
-        {hasData ? (
-          <div className="space-y-1.5">
-            <div className="flex rounded-full overflow-hidden h-2.5">
-              {macros.map(m => (
-                <div
-                  key={m.label}
-                  style={{
-                    width: `${m.pct}%`,
-                    backgroundColor: m.color,
-                    transition: 'width 0.6s ease',
-                  }}
-                />
-              ))}
-            </div>
-            <div className="flex justify-between px-0.5">
-              {macros.map(m => (
-                <div key={m.label} className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: m.color }} />
-                  <span className="text-[10px] text-muted-foreground">{m.pct}% {m.label.slice(0, 2)}</span>
-                </div>
-              ))}
-            </div>
+        <div className="flex items-start gap-4">
+          <div className="flex-shrink-0">
+            <MacroRingChart
+              intake={intake}
+              targetCalories={targetCalories}
+              protein={protein}
+              carbs={carbs}
+              fat={fat}
+              proteinTarget={proteinTarget}
+              carbsTarget={carbsTarget}
+              fatTarget={fatTarget}
+              hasData={hasData}
+              compact={true}
+            />
           </div>
-        ) : (
-          <div className="h-2.5 rounded-full bg-muted/60" />
-        )}
+
+          <div className="flex-1 min-w-0 pt-3 space-y-2.5">
+            <MacroRow
+              label="蛋白质"
+              actual={protein}
+              target={proteinTarget}
+              color="#F97316"
+              hasData={hasData}
+              foods={allFoods}
+              macroKey="protein"
+            />
+            <MacroRow
+              label="碳水化合物"
+              actual={carbs}
+              target={carbsTarget}
+              color="#6366F1"
+              hasData={hasData}
+              foods={allFoods}
+              macroKey="carbs"
+            />
+            <MacroRow
+              label="脂肪"
+              actual={fat}
+              target={fatTarget}
+              color="#0EA5E9"
+              hasData={hasData}
+              foods={allFoods}
+              macroKey="fat"
+            />
+
+            {hasData && (
+              <p className="text-[10px] text-muted-foreground/50 leading-relaxed pt-1">
+                基于 {targetCalories} kcal 日目标推算
+              </p>
+            )}
+          </div>
+        </div>
       </div>
 
       <div className="mx-4 border-t border-border/50" />

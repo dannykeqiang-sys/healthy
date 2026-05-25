@@ -160,7 +160,7 @@ function MealSection({
                   autoFocus
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                   className="flex-1 min-w-0 text-sm bg-transparent border-b outline-none py-0.5"
                   style={{ borderColor: `${config.color}60` }}
                 />
@@ -168,7 +168,7 @@ function MealSection({
                   type="number"
                   value={editCalories}
                   onChange={e => setEditCalories(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                   className="w-14 text-sm bg-transparent border-b outline-none text-right py-0.5"
                   style={{ borderColor: `${config.color}60` }}
                 />
@@ -223,7 +223,12 @@ function MealSection({
         </div>
       )}
 
-      <div className="relative">
+      <div className="relative space-y-2">
+        <VoiceInputButton
+          apiKey={apiKey}
+          color={config.color}
+          onResult={handleVoiceResult}
+        />
         <div className="flex gap-2">
           <Input
             value={name}
@@ -231,7 +236,7 @@ function MealSection({
             onBlur={handleNameBlur}
             placeholder={config.placeholder}
             className="bg-white/80 border-border/70 text-foreground placeholder:text-muted-foreground text-sm flex-1 min-w-0"
-            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd(); }}
           />
           <button
             onClick={handleAIEstimate}
@@ -255,7 +260,7 @@ function MealSection({
             onChange={e => setCalories(e.target.value)}
             placeholder="kcal"
             className="bg-white/80 border-border/70 text-foreground placeholder:text-muted-foreground text-sm w-16 flex-shrink-0"
-            onKeyDown={e => e.key === 'Enter' && handleAdd()}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd(); }}
           />
           <Button
             size="icon"
@@ -265,11 +270,6 @@ function MealSection({
           >
             <Plus className="w-4 h-4" />
           </Button>
-          <VoiceInputButton
-            apiKey={apiKey}
-            color={config.color}
-            onResult={handleVoiceResult}
-          />
         </div>
 
         {toast && (

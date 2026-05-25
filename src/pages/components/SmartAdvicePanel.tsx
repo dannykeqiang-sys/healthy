@@ -82,6 +82,23 @@ function clearCache(date: string): void {
   } catch {}
 }
 
+const TRAINING_PLAN_PREFIX = 'training_plan_';
+
+function loadTrainingPlan(date: string): string[] {
+  try {
+    const raw = localStorage.getItem(TRAINING_PLAN_PREFIX + date);
+    return raw ? (JSON.parse(raw) as string[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveTrainingPlan(date: string, plan: string[]): void {
+  try {
+    localStorage.setItem(TRAINING_PLAN_PREFIX + date, JSON.stringify(plan));
+  } catch {}
+}
+
 function buildSnapshotKey(record: DailyRecord, trainingPlan?: string[]): string {
   const b = record.meals.breakfast.reduce((s, f) => s + f.calories, 0);
   const l = record.meals.lunch.reduce((s, f) => s + f.calories, 0);
@@ -173,7 +190,7 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
   const [errorMsg, setErrorMsg] = useState('');
   const [alertMsg, setAlertMsg] = useState('');
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [trainingPlan, setTrainingPlan] = useState<string[]>([]);
+  const [trainingPlan, setTrainingPlan] = useState<string[]>(() => loadTrainingPlan(record.date));
 
   const workoutNutrition = useMemo<WorkoutNutrition | null>(() => {
     if (trainingPlan.length === 0) return null;
@@ -196,13 +213,21 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
     }
   }, [record.date]);
 
+  useEffect(() => {
+    setTrainingPlan(loadTrainingPlan(record.date));
+  }, [record.date]);
+
   const showAlert = (msg: string) => {
     setAlertMsg(msg);
     setTimeout(() => setAlertMsg(''), 4500);
   };
 
   const selectTraining = (part: string) => {
-    setTrainingPlan(prev => prev.includes(part) ? [] : [part]);
+    setTrainingPlan(prev => {
+      const next = prev.includes(part) ? [] : [part];
+      saveTrainingPlan(record.date, next);
+      return next;
+    });
   };
 
   const callApi = async () => {

@@ -18,21 +18,11 @@ interface ExerciseCardSlotProps {
   items: ExerciseItem[];
   isActive: boolean;
   isHighlighted: boolean;
+  journalDate?: string;
   onAdd: (item: ExerciseItem) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: ExerciseItem) => void;
 }
-
-const QUICK_EXERCISES = [
-  { name: '跑步', caloriesPerMin: 10 },
-  { name: '骑行', caloriesPerMin: 8 },
-  { name: '游泳', caloriesPerMin: 9 },
-  { name: '力量训练', caloriesPerMin: 6 },
-  { name: '瑜伽', caloriesPerMin: 4 },
-  { name: '健步走', caloriesPerMin: 5 },
-  { name: 'HIIT', caloriesPerMin: 12 },
-  { name: '跳绳', caloriesPerMin: 11 },
-];
 
 export default function ExerciseCardSlot({
   config,
@@ -50,8 +40,6 @@ export default function ExerciseCardSlot({
   const [editName, setEditName] = useState('');
   const [editDuration, setEditDuration] = useState('');
   const [editCalories, setEditCalories] = useState('');
-  const [showQuick, setShowQuick] = useState(false);
-  const [quickMin, setQuickMin] = useState<Record<string, string>>({});
 
   const Icon = config.icon;
   const totalBurn = items.reduce((s, e) => s + e.calories, 0);
@@ -63,11 +51,6 @@ export default function ExerciseCardSlot({
     setName('');
     setDuration('');
     setCalories('');
-  };
-
-  const handleQuickAdd = (ex: { name: string; caloriesPerMin: number }) => {
-    const mins = Number(quickMin[ex.name] || 30);
-    onAdd({ id: crypto.randomUUID(), name: ex.name, duration: mins, calories: Math.round(ex.caloriesPerMin * mins) });
   };
 
   const startEdit = (item: ExerciseItem) => {
@@ -133,7 +116,7 @@ export default function ExerciseCardSlot({
           WebkitBackdropFilter: 'blur(14px)',
         }}
       >
-        <div className="p-5 pb-3">
+        <div className="p-5 pb-2">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
               <div
@@ -148,9 +131,9 @@ export default function ExerciseCardSlot({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0">
+        <div className="flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0 pt-1">
           {items.length === 0 && (
-            <div className="flex items-center justify-center h-20 text-xs text-muted-foreground/50 tracking-wide">
+            <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/50 tracking-wide">
               快去动起来，记录今天的运动吧
             </div>
           )}
@@ -191,7 +174,7 @@ export default function ExerciseCardSlot({
               <div
                 key={item.id}
                 className="group flex items-center justify-between py-2.5 px-3 rounded-2xl bg-white/65 border border-white/70 hover:bg-white/85 transition-colors"
-                style={{ animation: `mealItemIn 0.38s cubic-bezier(0.4,0,0.2,1) ${index * 0.06}s both` }}
+                style={{ animation: `exerciseItemIn 0.38s cubic-bezier(0.4,0,0.2,1) ${index * 0.06}s both` }}
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                   <span className="text-sm text-foreground truncate">{item.name}</span>
@@ -227,41 +210,13 @@ export default function ExerciseCardSlot({
           )}
         </div>
 
-        <div className="px-5 mt-2">
-          <button
-            onClick={() => setShowQuick(v => !v)}
-            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-            style={{ color: showQuick ? config.accent : undefined }}
-          >
-            <Zap className="w-3 h-3" />
-            {showQuick ? '收起' : '快速添加常见运动'}
-          </button>
-          {showQuick && (
-            <div className="mt-2 grid grid-cols-2 gap-1.5 pb-2">
-              {QUICK_EXERCISES.map(ex => (
-                <div key={ex.name} className="flex items-center gap-1 bg-white/70 rounded-xl px-2 py-1.5 border border-white/60">
-                  <button
-                    onClick={() => handleQuickAdd(ex)}
-                    className="flex-1 text-left text-xs font-medium text-foreground cursor-pointer truncate"
-                  >
-                    {ex.name}
-                  </button>
-                  <input
-                    type="number"
-                    value={quickMin[ex.name] ?? '30'}
-                    onChange={e => setQuickMin(p => ({ ...p, [ex.name]: e.target.value }))}
-                    className="w-8 text-xs bg-transparent outline-none text-right text-muted-foreground"
-                  />
-                  <span className="text-[10px] text-muted-foreground flex-shrink-0">分</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
         <div className="mx-5 mt-2 mb-0 h-px" style={{ backgroundColor: `${config.accent}20` }} />
 
         <div className="px-5 pt-3 pb-5">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Zap className="w-3 h-3 text-muted-foreground/50" />
+            <span className="text-[10px] text-muted-foreground/50">自定义记录</span>
+          </div>
           <div className="flex items-center gap-1.5">
             <Input
               value={name}
@@ -298,7 +253,7 @@ export default function ExerciseCardSlot({
       </div>
 
       <style>{`
-        @keyframes mealItemIn {
+        @keyframes exerciseItemIn {
           from { opacity: 0; transform: translateY(10px) scale(0.97); }
           to   { opacity: 1; transform: translateY(0)    scale(1); }
         }

@@ -15,6 +15,7 @@ export interface DayStats {
   carbs: number;
   fat: number;
   exercises: { name: string; duration: number; calories: number }[];
+  weight?: number;
 }
 
 interface AIHealingCardProps {

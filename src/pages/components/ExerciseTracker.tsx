@@ -127,7 +127,7 @@ export default function ExerciseTracker({ record, onChange }: ExerciseTrackerPro
                     autoFocus
                     value={editName}
                     onChange={e => setEditName(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) saveEdit(); if (e.key === 'Escape') cancelEdit(); }}
                     className="flex-1 min-w-0 text-sm bg-transparent border-b border-blue-300 outline-none py-0.5"
                     placeholder="运动名称"
                   />

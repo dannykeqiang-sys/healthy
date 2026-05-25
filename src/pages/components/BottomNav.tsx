@@ -66,6 +66,7 @@ export default function BottomNav({ activeTab, onTabChange, onAIOpen }: BottomNa
 
         <div className="absolute left-1/2 -translate-x-1/2 -top-7 z-10">
           <button
+            data-tutorial="ai-btn"
             onClick={onAIOpen}
             className="w-14 h-14 rounded-full flex items-center justify-center text-white cursor-pointer active:scale-90 transition-all"
             style={{

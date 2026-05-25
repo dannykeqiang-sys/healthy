@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
-import { X, Calendar, Flame, Droplets, Dumbbell } from 'lucide-react';
+import { X, Calendar, Flame, Droplets, Dumbbell, TrendingUp, TrendingDown, Minus, Lightbulb } from 'lucide-react';
 import type { UserProfile } from '../../types';
 import AIHealingCard, { type DayStats } from './AIHealingCard';
 import DualCurveChart from './DualCurveChart';
@@ -49,6 +49,80 @@ function getSubline(activeDays: number, exerciseDays: number, waterDays: number)
 
 const CHART_LABELS = ['热量曲线', '营养节律', '饮水体重'];
 
+interface TrendItem {
+  label: string;
+  early: number;
+  late: number;
+  unit: string;
+  higherIsBetter: boolean;
+}
+
+function getTrendItems(stats: DayStats[], tdee: number): TrendItem[] {
+  const activeDays = stats.filter(d => d.intake > 0);
+  if (activeDays.length < 2) return [];
+  const mid = Math.ceil(activeDays.length / 2);
+  const early = activeDays.slice(0, mid);
+  const late = activeDays.slice(mid);
+  if (late.length === 0) return [];
+  const avg = (arr: DayStats[], key: keyof DayStats) =>
+    Math.round(arr.reduce((s, d) => s + (d[key] as number), 0) / arr.length);
+
+  return [
+    { label: '平均摄入', early: avg(early, 'intake'), late: avg(late, 'intake'), unit: 'kcal', higherIsBetter: false },
+    { label: '平均运动', early: avg(early, 'burn'), late: avg(late, 'burn'), unit: 'kcal', higherIsBetter: true },
+    { label: '平均饮水', early: avg(early, 'water'), late: avg(late, 'water'), unit: 'ml', higherIsBetter: true },
+  ];
+}
+
+interface Suggestion {
+  text: string;
+  color: string;
+  priority: number;
+}
+
+function getSuggestions(stats: DayStats[], profile: UserProfile | null, targetCalories: number, tdee: number): Suggestion[] {
+  const suggestions: Suggestion[] = [];
+  const activeDays = stats.filter(d => d.intake > 0);
+  const exerciseDays = stats.filter(d => d.burn > 0).length;
+  const lowWaterDays = stats.filter(d => d.intake > 0 && d.water < 1500).length;
+  const overTargetDays = activeDays.filter(d => d.intake > targetCalories + 100).length;
+
+  const weightDays = stats.filter(d => d.weight !== undefined && d.weight !== null) as (DayStats & { weight: number })[];
+  const weightTrend = weightDays.length >= 2
+    ? weightDays[weightDays.length - 1].weight - weightDays[0].weight
+    : null;
+
+  if (activeDays.length < 4) {
+    suggestions.push({ text: `本周只记录了 ${activeDays.length} 天，坚持每天记录才能让数据真正帮助你`, color: '#8B5CF6', priority: 1 });
+  }
+  if (exerciseDays === 0) {
+    suggestions.push({ text: '本周没有运动记录，每周 2-3 次有氧运动对热量管理帮助很大', color: '#F97316', priority: 2 });
+  } else if (exerciseDays <= 2) {
+    suggestions.push({ text: `本周运动了 ${exerciseDays} 天，尝试增加到 4 天以上效果会更好`, color: '#F59E0B', priority: 3 });
+  }
+  if (lowWaterDays >= 3) {
+    suggestions.push({ text: `有 ${lowWaterDays} 天饮水不足 1500ml，充足的水分有助于代谢和减脂`, color: '#0EA5E9', priority: 4 });
+  }
+  if (overTargetDays >= 3) {
+    suggestions.push({ text: `${overTargetDays} 天热量超标，可以考虑减少精制碳水和晚餐的分量`, color: '#EF4444', priority: 5 });
+  }
+  if (weightTrend !== null) {
+    if (weightTrend > 0.5 && profile?.goal === 'lose') {
+      suggestions.push({ text: `本周体重上升了 ${weightTrend.toFixed(1)} kg，建议减少热量摄入并增加有氧运动`, color: '#EF4444', priority: 2 });
+    } else if (weightTrend < -0.5 && profile?.goal === 'gain') {
+      suggestions.push({ text: `本周体重下降了 ${Math.abs(weightTrend).toFixed(1)} kg，增加蛋白质和热量摄入很重要`, color: '#F97316', priority: 2 });
+    } else if (weightTrend <= -0.3 && profile?.goal === 'lose') {
+      suggestions.push({ text: `本周减重 ${Math.abs(weightTrend).toFixed(1)} kg，控制节奏很棒，继续保持`, color: '#22C55E', priority: 6 });
+    }
+  }
+
+  if (suggestions.length === 0) {
+    suggestions.push({ text: '本周表现很均衡，继续保持当前的饮食和运动节奏', color: '#A3B899', priority: 99 });
+  }
+
+  return suggestions.sort((a, b) => a.priority - b.priority).slice(0, 3);
+}
+
 export default function WeeklyStatsModal({
   open,
   onClose,
@@ -64,6 +138,8 @@ export default function WeeklyStatsModal({
 }: WeeklyStatsModalProps) {
   const [activeChart, setActiveChart] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
+  const trendItems = getTrendItems(stats, tdee);
+  const suggestions = getSuggestions(stats, profile, targetCalories, tdee);
 
   useEffect(() => {
     if (open) {
@@ -104,7 +180,7 @@ export default function WeeklyStatsModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/45 backdrop-blur-md"
         style={{ animation: 'fadeIn 0.25s ease' }}
         onClick={onClose}
       />
@@ -125,7 +201,9 @@ export default function WeeklyStatsModal({
           className="w-full sm:rounded-3xl rounded-t-3xl flex flex-col overflow-hidden"
           style={{
             maxHeight: '92vh',
-            background: 'linear-gradient(170deg, #FFF9F5 0%, #F5F2FF 50%, #F0F8FF 100%)',
+            background: 'linear-gradient(170deg, rgba(255,249,245,0.96) 0%, rgba(245,242,255,0.96) 50%, rgba(240,248,255,0.96) 100%)',
+            backdropFilter: 'blur(20px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(180%)',
           }}
         >
           <div
@@ -196,6 +274,73 @@ export default function WeeklyStatsModal({
               exerciseDays={exerciseDays}
               daysOnTarget={daysOnTarget}
             />
+
+            {trendItems.length > 0 && (
+              <div className="rounded-2xl bg-white border border-border overflow-hidden">
+                <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                  <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)' }}>
+                    <TrendingUp className="w-3 h-3 text-white" />
+                  </div>
+                  <p className="text-sm font-bold text-foreground">本周趋势对比</p>
+                  <span className="text-[10px] text-muted-foreground ml-auto">前半周 vs 后半周</span>
+                </div>
+                <div className="px-4 pb-4 space-y-3">
+                  {trendItems.map(item => {
+                    const diff = item.late - item.early;
+                    const improved = item.higherIsBetter ? diff > 0 : diff < 0;
+                    const neutral = Math.abs(diff) < (item.unit === 'kcal' ? 50 : 100);
+                    const TrendIcon = neutral ? Minus : improved ? TrendingUp : TrendingDown;
+                    const color = neutral ? '#9CA3AF' : improved ? '#22C55E' : '#EF4444';
+                    return (
+                      <div key={item.label}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs text-muted-foreground">{item.label}</span>
+                          <div className="flex items-center gap-1">
+                            <TrendIcon className="w-3 h-3" style={{ color }} />
+                            <span className="text-[11px] font-semibold" style={{ color }}>
+                              {neutral ? '持平' : `${diff > 0 ? '+' : ''}${diff} ${item.unit}`}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                          <span className="bg-muted/60 rounded px-1.5 py-0.5">前：{item.early} {item.unit}</span>
+                          <span>→</span>
+                          <span className="rounded px-1.5 py-0.5" style={{ backgroundColor: `${color}15`, color }}>
+                            后：{item.late} {item.unit}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-2xl bg-white border border-border overflow-hidden">
+              <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #F59E0B, #F97316)' }}>
+                  <Lightbulb className="w-3 h-3 text-white" />
+                </div>
+                <p className="text-sm font-bold text-foreground">个性化建议</p>
+              </div>
+              <div className="px-4 pb-4 space-y-2.5">
+                {suggestions.map((s, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-2.5 p-3 rounded-xl"
+                    style={{ backgroundColor: `${s.color}0D`, borderLeft: `3px solid ${s.color}` }}
+                  >
+                    <span
+                      className="text-[10px] font-bold rounded-full px-1.5 py-0.5 flex-shrink-0 mt-0.5"
+                      style={{ backgroundColor: `${s.color}20`, color: s.color }}
+                    >
+                      {i + 1}
+                    </span>
+                    <p className="text-xs text-foreground leading-relaxed">{s.text}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
 
             <div
               className="rounded-2xl overflow-hidden border border-border"

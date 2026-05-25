@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { history } from 'ice';
 import { BookOpen, TrendingUp, Copy, ActivitySquare } from 'lucide-react';
 import Navbar from './components/Navbar';
 import UserProfilePanel from './components/UserProfilePanel';
@@ -11,15 +12,20 @@ import DateSwitcher from './components/DateSwitcher';
 import AnalyticsPanel from './components/AnalyticsPanel';
 import SmartAdvicePanel from './components/SmartAdvicePanel';
 import OnboardingPanel from './components/OnboardingPanel';
-import { loadProfile, loadTodayRecord, saveTodayRecord, loadRecordByDate, saveRecordByDate } from '../utils/storage';
+import TutorialOverlay from './components/TutorialOverlay';
+import WeightChip from './components/WeightChip';
+import { loadProfile, saveProfile, loadTodayRecord, saveTodayRecord, loadRecordByDate, saveRecordByDate } from '../utils/storage';
 import { idbSaveRecord, idbGetRecord } from '../utils/indexedDB';
-import { syncRecordToCloud } from '../utils/supabaseDB';
+import { syncRecordToCloud, syncProfileToCloud, loadProfileFromCloud } from '../utils/supabaseDB';
+import { getSession } from '../utils/auth';
+import AIRecordCelebration from './components/AIRecordCelebration';
 import type { UserProfile, DailyRecord, MealRecord, FoodItem, MealType, ExerciseItem, WaterItem } from '../types';
 
 const API_KEY_STORAGE = 'calorie_deepseek_api_key';
+const BUILT_IN_API_KEY = 'sk-c0385f6b8bcb406b91a59a56fab9a477';
 
 function loadApiKey(): string {
-  return localStorage.getItem(API_KEY_STORAGE) ?? '';
+  return localStorage.getItem(API_KEY_STORAGE) || BUILT_IN_API_KEY;
 }
 
 function saveApiKey(key: string) {
@@ -60,20 +66,40 @@ export default function Home() {
   const [journalDate, setJournalDate] = useState(getTodayKey);
   const [historyRecord, setHistoryRecord] = useState<DailyRecord | null>(null);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiDefaultTab, setAiDefaultTab] = useState<'record' | 'chat'>('record');
+  const [showAICelebration, setShowAICelebration] = useState(false);
 
   const carouselRef = useRef<MealCarouselRef>(null);
   const autoScrollSlot = useRef(0);
   const autoScrollResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!getSession()) {
+      history?.push('/login');
+      return;
+    }
     document.title = '燃烧我的卡路里 - 科学管理你的热量';
-    const p = loadProfile();
-    setProfile(p);
     setRecord(loadTodayRecord());
     setApiKey(loadApiKey());
-    if (!p) setShowOnboarding(true);
+    const localProfile = loadProfile();
+    if (localProfile) {
+      setProfile(localProfile);
+    } else {
+      loadProfileFromCloud()
+        .then(cloudProfile => {
+          if (cloudProfile) {
+            setProfile(cloudProfile);
+            saveProfile(cloudProfile);
+          } else {
+            setShowOnboarding(true);
+          }
+        })
+        .catch(() => {
+          setShowOnboarding(true);
+        });
+    }
   }, []);
 
   useEffect(() => {
@@ -275,13 +301,44 @@ export default function Home() {
     [journalDate],
   );
 
+  const handleWaterReplace = useCallback((items: WaterItem[]) => {
+    setRecord(prev => {
+      if (!prev) return prev;
+      const newRecord = { ...prev, water: items };
+      saveTodayRecord(newRecord);
+      idbSaveRecord(newRecord).catch(() => {});
+      syncRecordToCloud(newRecord).catch(() => {});
+      return newRecord;
+    });
+  }, []);
+
+  const handleHistoryWaterReplace = useCallback(
+    (items: WaterItem[]) => {
+      setHistoryRecord(prev => {
+        const base = prev ?? makeEmptyRecord(journalDate);
+        const newRecord = { ...base, water: items };
+        saveRecordByDate(newRecord);
+        idbSaveRecord(newRecord).catch(() => {});
+        syncRecordToCloud(newRecord).catch(() => {});
+        return newRecord;
+      });
+    },
+    [journalDate],
+  );
+
   const handleOnboardingComplete = useCallback((p: UserProfile, key: string) => {
     setProfile(p);
     if (key) {
       setApiKey(key);
       saveApiKey(key);
     }
+    syncProfileToCloud(p).catch(() => {});
     setShowOnboarding(false);
+    setShowTutorial(true);
+  }, []);
+
+  const handleTutorialDone = useCallback(() => {
+    setShowTutorial(false);
   }, []);
 
   const handleReuseHistoryRecord = useCallback(() => {
@@ -303,11 +360,23 @@ export default function Home() {
 
   const handleProfileSave = useCallback((p: UserProfile) => {
     setProfile(p);
+    syncProfileToCloud(p).catch(() => {});
   }, []);
 
   const handleApiKeySave = useCallback((key: string) => {
     setApiKey(key);
     saveApiKey(key);
+  }, []);
+
+  const handleLogout = useCallback(() => {
+    localStorage.clear();
+    setProfile(null);
+    setRecord(makeEmptyRecord(getTodayKey()));
+    setApiKey(BUILT_IN_API_KEY);
+    setShowSettings(false);
+    setShowTutorial(false);
+    setShowAICelebration(false);
+    setShowOnboarding(true);
   }, []);
 
   const handleTabChange = useCallback((tab: string) => {
@@ -361,11 +430,14 @@ export default function Home() {
       />
 
       <div className="sticky top-16 z-40 bg-background/95 backdrop-blur-md border-b border-border/40">
-        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-2">
-          <DateSwitcher
-            selectedDate={journalDate}
-            onDateChange={setJournalDate}
-          />
+        <div className="max-w-2xl mx-auto px-4 sm:px-6 py-1.5 flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <DateSwitcher
+              selectedDate={journalDate}
+              onDateChange={setJournalDate}
+            />
+          </div>
+          <WeightChip journalDate={journalDate} />
         </div>
       </div>
 
@@ -378,6 +450,7 @@ export default function Home() {
               return (
                 <button
                   key={tab.value}
+                  data-tutorial={tab.value === 'ai' ? 'ai-tab' : undefined}
                   onClick={() => handleTabChange(tab.value)}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all cursor-pointer"
                   style={{
@@ -430,14 +503,19 @@ export default function Home() {
               </button>
             )}
 
-            <MealCarousel
-              ref={carouselRef}
-              record={activeRecord}
-              apiKey={apiKey}
-              isViewingToday={isViewingToday}
-              profile={profile}
-              onChange={activeOnChange}
-            />
+            <div data-tutorial="cards">
+              <MealCarousel
+                ref={carouselRef}
+                record={activeRecord}
+                apiKey={apiKey}
+                isViewingToday={isViewingToday}
+                profile={profile}
+                journalDate={journalDate}
+                onChange={activeOnChange}
+                onWaterReplace={isViewingToday ? handleWaterReplace : handleHistoryWaterReplace}
+              />
+            </div>
+
           </div>
         )}
 
@@ -458,6 +536,7 @@ export default function Home() {
         apiKey={apiKey}
         isViewingToday={isViewingToday}
         defaultTab={aiDefaultTab}
+        onRecordSuccess={() => setShowAICelebration(true)}
         {...aiHandlers}
       />
 
@@ -478,10 +557,23 @@ export default function Home() {
         apiKey={apiKey}
         onClose={() => setShowSettings(false)}
         onSave={handleApiKeySave}
+        onLogout={handleLogout}
       />
 
       {showOnboarding && (
         <OnboardingPanel onComplete={handleOnboardingComplete} />
+      )}
+
+      {showTutorial && profile && (
+        <TutorialOverlay
+          name={profile.name}
+          onDone={handleTutorialDone}
+          onTabChange={handleTabChange}
+        />
+      )}
+
+      {showAICelebration && (
+        <AIRecordCelebration onDismiss={() => setShowAICelebration(false)} />
       )}
     </div>
   );

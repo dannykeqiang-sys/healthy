@@ -24,6 +24,7 @@ interface WaterCardSlotProps {
   onAdd: (item: WaterItem) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: WaterItem) => void;
+  onReplace?: (items: WaterItem[]) => void;
 }
 
 const QUICK_AMOUNTS = [
@@ -80,6 +81,7 @@ export default function WaterCardSlot({
   onAdd,
   onRemove,
   onUpdate,
+  onReplace,
 }: WaterCardSlotProps) {
   const [inputText, setInputText] = useState('');
   const [inputStatus, setInputStatus] = useState<InputStatus>('idle');
@@ -141,6 +143,23 @@ export default function WaterCardSlot({
     pendingLogs.forEach(log => {
       onAdd({ id: crypto.randomUUID(), amount: log.amount, note: log.raw_text, time });
     });
+    setInputText('');
+    setPendingLogs([]);
+    setAnalysisSummary('');
+    setInputStatus('idle');
+    inputRef.current?.focus();
+  };
+
+  const handleReplace = () => {
+    if (!onReplace) return;
+    const time = getNowTime();
+    const newItems = pendingLogs.map(log => ({
+      id: crypto.randomUUID(),
+      amount: log.amount,
+      note: log.raw_text,
+      time,
+    }));
+    onReplace(newItems);
     setInputText('');
     setPendingLogs([]);
     setAnalysisSummary('');
@@ -298,17 +317,26 @@ export default function WaterCardSlot({
             <div className="flex gap-2">
               <button
                 onClick={handleRetry}
-                className="flex-1 py-1.5 rounded-xl border text-xs text-muted-foreground cursor-pointer hover:bg-white/60 transition-colors"
+                className="py-1.5 px-3 rounded-xl border text-xs text-muted-foreground cursor-pointer hover:bg-white/60 transition-colors flex-shrink-0"
                 style={{ borderColor: `${config.accent}30` }}
               >
                 重新输入
               </button>
+              {onReplace && items.length > 0 && (
+                <button
+                  onClick={handleReplace}
+                  className="flex-1 py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-95 transition-all border"
+                  style={{ borderColor: config.accent, color: config.accent, backgroundColor: `${config.accent}10` }}
+                >
+                  覆盖全部
+                </button>
+              )}
               <button
                 onClick={handleConfirm}
                 className="flex-1 py-1.5 rounded-xl text-xs text-white font-medium cursor-pointer active:scale-95 transition-all"
                 style={{ backgroundColor: config.accent }}
               >
-                加入水帐
+                追加记录
               </button>
             </div>
           </div>
