@@ -19,6 +19,7 @@ interface ExerciseCardSlotProps {
   isActive: boolean;
   isHighlighted: boolean;
   journalDate?: string;
+  fullscreen?: boolean;
   onAdd: (item: ExerciseItem) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: ExerciseItem) => void;
@@ -29,6 +30,7 @@ export default function ExerciseCardSlot({
   items,
   isActive,
   isHighlighted,
+  fullscreen = false,
   onAdd,
   onRemove,
   onUpdate,
@@ -44,6 +46,7 @@ export default function ExerciseCardSlot({
   const Icon = config.icon;
   const totalBurn = items.reduce((s, e) => s + e.calories, 0);
   const totalMin = items.reduce((s, e) => s + e.duration, 0);
+  const showDetails = !fullscreen || isActive;
 
   const handleAdd = () => {
     if (!name.trim() || !calories) return;
@@ -70,7 +73,7 @@ export default function ExerciseCardSlot({
 
   return (
     <div
-      className="relative w-[82vw] sm:w-[400px] min-h-[500px] rounded-3xl overflow-hidden flex flex-col select-none"
+      className={`relative w-[82vw] sm:w-[400px] rounded-3xl overflow-hidden flex flex-col select-none ${fullscreen ? 'h-full' : 'min-h-[500px]'}`}
       style={{
         transform: isActive ? 'scale(1)' : 'scale(0.93)',
         opacity: isActive ? 1 : 0.62,
@@ -82,7 +85,13 @@ export default function ExerciseCardSlot({
         outlineOffset: '3px',
       }}
     >
-      <div className="relative h-32 flex-shrink-0">
+      <div
+        className="relative flex-shrink-0 overflow-hidden"
+        style={{
+          height: fullscreen ? (isActive ? '200px' : '0px') : '8rem',
+          transition: 'height 0.6s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
         {config.imageUrl ? (
           <img
             src={config.imageUrl}
@@ -131,7 +140,10 @@ export default function ExerciseCardSlot({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0 pt-1">
+        <div
+          className="flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0 pt-1"
+          style={{ pointerEvents: showDetails ? 'auto' : 'none' }}
+        >
           {items.length === 0 && (
             <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/50 tracking-wide">
               快去动起来，记录今天的运动吧
@@ -210,9 +222,15 @@ export default function ExerciseCardSlot({
           )}
         </div>
 
-        <div className="mx-5 mt-2 mb-0 h-px" style={{ backgroundColor: `${config.accent}20` }} />
+        <div
+          className="mx-5 mt-2 mb-0 h-px"
+          style={{ backgroundColor: `${config.accent}20`, opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease' }}
+        />
 
-        <div className="px-5 pt-3 pb-5">
+        <div
+          className="px-5 pt-3 pb-5"
+          style={{ opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: showDetails ? 'auto' : 'none' }}
+        >
           <div className="flex items-center gap-1.5 mb-2">
             <Zap className="w-3 h-3 text-muted-foreground/50" />
             <span className="text-[10px] text-muted-foreground/50">自定义记录</span>

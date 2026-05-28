@@ -77,7 +77,7 @@ export default function WaterTracker({ items, onAdd, onRemove, onUpdate }: Water
   };
 
   const startEdit = (item: WaterItem) => {
-    setEditState({ id: item.id, amount: String(item.amount), note: item.note });
+    setEditState({ id: item.id, amount: String(item.amount), note: item.note ?? '' });
   };
 
   const commitEdit = () => {

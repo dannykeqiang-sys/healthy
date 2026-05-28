@@ -14,6 +14,7 @@ export interface DayStats {
   protein: number;
   carbs: number;
   fat: number;
+  sodium: number;
   exercises: { name: string; duration: number; calories: number }[];
   weight?: number;
 }

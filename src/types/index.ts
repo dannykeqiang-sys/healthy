@@ -19,6 +19,7 @@ export interface FoodItem {
   protein?: number;
   carbs?: number;
   fat?: number;
+  sodium?: number;
 }
 
 export interface MealRecord {
@@ -38,7 +39,7 @@ export interface ExerciseItem {
 export interface WaterItem {
   id: string;
   amount: number;
-  note: string;
+  note?: string;
   time: string;
 }
 
@@ -46,7 +47,7 @@ export interface DailyRecord {
   date: string;
   meals: MealRecord;
   exercises: ExerciseItem[];
-  water: WaterItem[];
+  water?: WaterItem[];
 }
 
 export interface BMIResult {

@@ -147,6 +147,10 @@ export interface CalorieEstimate {
   estimated_weight: string;
   calories: number;
   reason: string;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  sodium?: number;
 }
 
 export async function estimateCalories(
@@ -162,7 +166,7 @@ export async function estimateCalories(
         {
           role: 'system',
           content:
-            '你是一个食物卡路里换算助手。请分析用户输入的食物描述（可能来自语音识别，包含错别字请自行纠正），根据常识估算其大致的卡路里。请严格返回 JSON 格式：{"food_name":"纠正后的标准食物名","estimated_weight":"估算重量","calories":数字,"reason":"温柔的估算理由"}，calories 字段为纯整数，不含单位。',
+            '你是一个食物营养换算助手。请分析用户输入的食物描述（可能来自语音识别，包含错别字请自行纠正），根据常识估算其卡路里、三大宏营养素和钠含量。请严格返回 JSON 格式：{"food_name":"纠正后的标准食物名","estimated_weight":"估算重量","calories":整数,"protein":蛋白质克数,"carbs":碳水克数,"fat":脂肪克数,"sodium":钠毫克整数,"reason":"温柔的估算理由"}，所有数值为纯数字不含单位。⚠️重要：若用户提到数量（如"两个鸡蛋"、"三块饼干"），calories/protein/carbs/fat/sodium均必须是该总数量的合计值而非单个值，food_name中注明数量（如"鸡蛋×2"）。钠含量参考：白米饭(100g)≈1mg、鸡蛋(1个)≈70mg、牛奶(200ml)≈100mg、面包(1片)≈170mg、火腿(100g)≈700mg、方便面(1包)≈1500mg、酱油(1汤匙)≈900mg。',
         },
         { role: 'user', content: foodDescription },
       ],
@@ -181,6 +185,7 @@ export interface ParsedFoodItem {
   protein?: number;
   carbs?: number;
   fat?: number;
+  sodium?: number;
 }
 
 export interface ParsedExerciseItem {
@@ -213,25 +218,27 @@ export async function parseMixedMeals(
       messages: [
         {
           role: 'system',
-          content: `你是一个温暖的饮食记录助手。用户会用自然语言描述今天吃了什么，可能混合了多个餐段的内容，也可能包含运动信息。请认真分析并将每种食物/饮品拆分为独立条目，估算各自卡路里和三大宏营养素；运动同样拆分为独立条目。语气要温暖鼓励。
+          content: `你是一个温暖的饮食记录助手。用户会用自然语言描述今天吃了什么，可能混合了多个餐段的内容，也可能包含运动信息。请认真分析并将每种食物/饮品拆分为独立条目，估算各自卡路里、三大宏营养素和钠含量；运动同样拆分为独立条目。语气要温暖鼓励。
 
 严格返回如下 JSON 格式，不含任何额外文字：
 {
   "has_data": true,
   "analysis_summary": "温暖的一句话总结",
   "data": {
-    "breakfast": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
-    "lunch": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
-    "dinner": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
-    "snack": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数 }],
+    "breakfast": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数, "sodium": 钠含量毫克数 }],
+    "lunch": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数, "sodium": 钠含量毫克数 }],
+    "dinner": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数, "sodium": 钠含量毫克数 }],
+    "snack": [{ "name": "食物名称", "calories": 数字, "protein": 蛋白质克数, "carbs": 碳水克数, "fat": 脂肪克数, "sodium": 钠含量毫克数 }],
     "exercises": [{ "name": "运动名称", "calories": 数字 }],
     "water_logs": [{ "raw_text": "液体简称", "amount": 含水量毫升整数 }]
   }
 }
 
 规则：
-- 每种食物/饮品单独一个对象，calories/protein/carbs/fat 均为纯数字（克/千卡）
-- protein=蛋白质(g)、carbs=碳水化合物(g)、fat=脂肪(g)，根据常见食物营养数据库估算
+- 每种食物/饮品单独一个对象，calories/protein/carbs/fat 均为纯数字（克/千卡），sodium 为纯整数毫克(mg)
+- ⚠️数量处理：若提到数量（两个、三块、一碗等），该条目的calories/protein/carbs/fat/sodium均必须是该数量的总合计值（而非单份），name中标注数量（如"鸡蛋×2"）
+- protein=蛋白质(g)、carbs=碳水化合物(g)、fat=脂肪(g)、sodium=钠(mg)，根据常见食物营养数据库估算
+- 钠含量参考：白米饭(100g)≈1mg、白面包(1片)≈170mg、馒头(100g)≈200mg、方便面(1包)≈1500mg、酱油(1汤匙)≈900mg、食盐(1g)≈400mg、火腿(100g)≈700mg、腊肉(100g)≈1000mg、泡菜(100g)≈800mg、薯片(50g)≈400mg、鸡胸肉(100g)≈70mg、鸡蛋(1个)≈70mg、牛奶(200ml)≈100mg、豆腐(100g)≈7mg、苹果(1个)≈1mg
 - 无数据的餐段返回空数组 []
 - exercises 包含用户提及的所有运动，无运动则返回 []
 - 时间线索（早上/中午/晚上/下午）决定归属餐段，无明确时间线索默认归入对应合理餐段
@@ -251,7 +258,7 @@ export async function parseMixedMeals(
 
 export interface SmartAdviceResult {
   has_data: boolean;
-  next_action_trigger: 'next_meal' | 'tomorrow';
+  next_action_trigger: 'next_meal' | 'tomorrow' | 'review';
   today_review: string;
   predictive_advice: {
     title: string;
@@ -266,12 +273,29 @@ export async function generateSmartAdvice(
   apiKey: string,
   todaySummary: string,
   historyContext: string,
-  mode: 'next_meal' | 'tomorrow',
+  mode: 'next_meal' | 'tomorrow' | 'review',
 ): Promise<SmartAdviceResult> {
   const timeStr = new Date().toLocaleString('zh-CN', { hour12: false });
   const isNextMeal = mode === 'next_meal';
+  const isReview = mode === 'review';
 
-  const systemPrompt = `你是温暖的 AI 健康伙伴"卡卡"。当前时间：${timeStr}。语气温柔治愈，绝不制造身材焦虑，不要说教。
+  const systemPrompt = isReview
+    ? `你是温暖的 AI 健康伙伴"卡卡"。语气温柔治愈，绝不制造身材焦虑，不要说教。这是用户某一天的历史饮食与运动数据，请做温柔的复盘分析。
+
+严格返回如下 JSON 格式，所有字段都必须有值，不含任何额外文字：
+{
+  "has_data": true,
+  "next_action_trigger": "review",
+  "today_review": "这一天的整体温柔回顾（100字内，关注饮食亮点与情绪价值）",
+  "predictive_advice": {
+    "title": "这一天的复盘洞察",
+    "energy_target": "热量摄入评价与目标对比分析（含具体数字）",
+    "diet_strategy": "饮食结构亮点与温柔改进建议（100字内，正向引导）",
+    "exercise_suggestion": "运动情况评价与后续建议（60字内，温暖激励）"
+  },
+  "health_tips": "基于这一天数据的温馨健康提示（60字内，温暖实用）"
+}`
+    : `你是温暖的 AI 健康伙伴"卡卡"。当前时间：${timeStr}。语气温柔治愈，绝不制造身材焦虑，不要说教。
 
 严格返回如下 JSON 格式，所有字段都必须有值，不含任何额外文字：
 {
@@ -303,6 +327,87 @@ export async function generateSmartAdvice(
   if (!response.ok) throw new Error(`API 请求失败 (${response.status})`);
   const data = await response.json();
   return JSON.parse(data.choices[0].message.content) as SmartAdviceResult;
+}
+
+export interface MultiDateEntry {
+  date: string;
+  meals: {
+    breakfast: ParsedFoodItem[];
+    lunch: ParsedFoodItem[];
+    dinner: ParsedFoodItem[];
+    snack: ParsedFoodItem[];
+  };
+  exercises: ParsedExerciseItem[];
+  water_logs: WaterLogItem[];
+}
+
+export interface MultiDateImportResult {
+  has_data: boolean;
+  analysis_summary: string;
+  dates: MultiDateEntry[];
+}
+
+export async function parseMultiDateMeals(
+  apiKey: string,
+  userInput: string,
+  todayDate: string,
+): Promise<MultiDateImportResult> {
+  const response = await fetch(DEEPSEEK_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'deepseek-chat',
+      messages: [
+        {
+          role: 'system',
+          content: `你是一个多日饮食记录批量导入助手。今天是 ${todayDate}。
+用户会用自然语言描述多天的饮食、运动和饮水情况，可能包含相对日期（今天、昨天、前天、大前天、上周X、X月X日等）。请将内容按日期归类，返回结构化JSON。
+
+日期解析规则：
+- "今天" → ${todayDate}
+- "昨天" → 前一天日期
+- "前天" → 前两天日期
+- "大前天" → 前三天日期
+- "上周X" → 上一个对应星期几的日期
+- "X月X日" → 本年对应日期
+- 无明确日期的内容默认归入今天
+
+严格返回如下 JSON（不含任何额外文字）：
+{
+  "has_data": true,
+  "analysis_summary": "一句话总结导入内容（≤50字）",
+  "dates": [
+    {
+      "date": "YYYY-MM-DD",
+      "meals": {
+        "breakfast": [{"name":"食物名","calories":数字,"protein":克数,"carbs":克数,"fat":克数,"sodium":毫克数}],
+        "lunch": [...],
+        "dinner": [...],
+        "snack": [...]
+      },
+      "exercises": [{"name":"运动名","calories":数字}],
+      "water_logs": [{"raw_text":"液体简称","amount":毫升整数}]
+    }
+  ]
+}
+
+规则：
+- 每个日期作为独立 dates 元素，dates 按日期升序排列
+- 无数据的餐段返回 []，无运动/饮水则返回 []
+- 时间线索（早上/中午/晚上/下午）决定餐段归属
+- 数量要合计（如"两个鸡蛋"→calories是两个合计），name注明数量（如"鸡蛋×2"）
+- calories/protein/carbs/fat 均为纯数字，sodium 为纯整数毫克
+- water_logs 记录所有液体实际含水量（ml），amount 为纯整数`,
+        },
+        { role: 'user', content: userInput },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+    }),
+  });
+  if (!response.ok) throw new Error(`API 请求失败 (${response.status})`);
+  const data = await response.json();
+  return JSON.parse(data.choices[0].message.content) as MultiDateImportResult;
 }
 
 export interface WaterLogItem {

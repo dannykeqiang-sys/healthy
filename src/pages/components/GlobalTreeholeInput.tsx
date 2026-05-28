@@ -14,6 +14,7 @@ interface GlobalTreeholeInputProps {
   onExercisesUpdate: (exercises: ExerciseItem[]) => void;
   onExercisesReplace: (exercises: ExerciseItem[]) => void;
   onWaterUpdate: (items: WaterItem[]) => void;
+  onWaterReplace?: (items: WaterItem[]) => void;
   onRecordSuccess?: () => void;
 }
 
@@ -62,6 +63,7 @@ export default function GlobalTreeholeInput({
   onExercisesUpdate,
   onExercisesReplace,
   onWaterUpdate,
+  onWaterReplace,
   onRecordSuccess,
 }: GlobalTreeholeInputProps) {
   const [text, setText] = useState('');
@@ -222,7 +224,10 @@ export default function GlobalTreeholeInput({
     onRecordSuccess?.();
     if (pending.mealUpdates.length > 0) onMealsReplace(pending.mealUpdates);
     if (pending.exerciseItems.length > 0) onExercisesReplace(pending.exerciseItems);
-    if (pending.waterItems.length > 0) onWaterUpdate(pending.waterItems);
+    if (pending.waterItems.length > 0) {
+      if (onWaterReplace) onWaterReplace(pending.waterItems);
+      else onWaterUpdate(pending.waterItems);
+    }
     setSummary(pending.summary);
     setSummaryItems(pending.summaryItems);
     setPending(null);

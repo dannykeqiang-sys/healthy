@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Activity, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+import { Activity, Zap, ChevronDown, ChevronUp, Dumbbell } from 'lucide-react';
 import type { DailyRecord, FoodItem, UserProfile } from '../../types';
-import { calcTargetCalories } from '../../utils/calculations';
+import { calcTargetCalories, calcMacroTargets, getDefaultMacroTargets } from '../../utils/calculations';
 import MacroRingChart from './MacroRingChart';
 
 const ANTI_KW = [
@@ -18,12 +18,14 @@ const PRO_KW = [
 
 function calcInflammationScore(foods: FoodItem[]): number {
   if (foods.length === 0) return -1;
-  let score = 50;
+  let keywordAdj = 0;
   for (const food of foods) {
     const n = food.name;
-    if (ANTI_KW.some(kw => n.includes(kw))) score += 6;
-    if (PRO_KW.some(kw => n.includes(kw))) score -= 10;
+    if (ANTI_KW.some(kw => n.includes(kw))) keywordAdj += 6;
+    if (PRO_KW.some(kw => n.includes(kw))) keywordAdj -= 10;
   }
+  keywordAdj = Math.max(-30, Math.min(30, keywordAdj));
+  let score = 50 + keywordAdj;
   const totalCal = foods.reduce((s, f) => s + f.calories, 0);
   if (totalCal > 100) {
     const carbCal = foods.reduce((s, f) => s + (f.carbs ?? 0) * 4, 0);
@@ -156,13 +158,18 @@ export default function TodayNutritionCard({ record, profile }: TodayNutritionCa
   const intake = Math.round(allFoods.reduce((s, f) => s + f.calories, 0));
 
   const targetCalories = profile ? calcTargetCalories(profile) : 2000;
-  const proteinTarget = Math.round(targetCalories * 0.30 / 4);
-  const carbsTarget = Math.round(targetCalories * 0.45 / 4);
-  const fatTarget = Math.round(targetCalories * 0.25 / 9);
+  const { proteinTarget, carbsTarget, fatTarget } = profile
+    ? calcMacroTargets(profile)
+    : getDefaultMacroTargets();
+
+  const activeBurn = Math.round(record.exercises.reduce((s, e) => s + e.calories, 0));
+  const netCalories = intake - activeBurn;
+  const netRemaining = targetCalories - netCalories;
 
   const score = calcInflammationScore(allFoods);
   const { label: scoreLabel, color: scoreColor, desc: scoreDesc } = getScoreInfo(score);
   const hasData = allFoods.length > 0;
+  const hasAnyData = hasData || activeBurn > 0;
 
   const indicatorPct = score >= 0 ? Math.max(3, Math.min(97, 100 - score)) : 50;
 
@@ -229,12 +236,71 @@ export default function TodayNutritionCard({ record, profile }: TodayNutritionCa
 
             {hasData && (
               <p className="text-[10px] text-muted-foreground/50 leading-relaxed pt-1">
-                基于 {targetCalories} kcal 日目标推算
+                {targetCalories} kcal · {profile?.goal === 'lose' ? '减脂方案' : profile?.goal === 'gain' ? '增肌方案' : '维持方案'}
               </p>
             )}
           </div>
         </div>
       </div>
+
+      <div className="mx-4 border-t border-border/50" />
+
+      {/* 热量收支 */}
+      {hasAnyData && (
+        <div className="px-4 py-3">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Dumbbell className="w-3 h-3" style={{ color: '#22C55E' }} />
+            <p className="text-[11px] font-semibold text-foreground">热量收支</p>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="flex-1 py-2 rounded-xl text-center" style={{ backgroundColor: 'rgba(249,115,22,0.08)' }}>
+              <p className="text-[13px] font-bold text-foreground tabular-nums">{hasData ? intake : '—'}</p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">摄入 kcal</p>
+            </div>
+            <span className="flex-shrink-0 text-sm text-muted-foreground/40 font-light px-0.5">−</span>
+            <div className="flex-1 py-2 rounded-xl text-center" style={{ backgroundColor: 'rgba(34,197,94,0.08)' }}>
+              <p
+                className="text-[13px] font-bold tabular-nums"
+                style={{ color: activeBurn > 0 ? '#16A34A' : '#9CA3AF' }}
+              >
+                {activeBurn}
+              </p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">活动消耗</p>
+            </div>
+            <span className="flex-shrink-0 text-sm text-muted-foreground/40 font-light px-0.5">=</span>
+            <div
+              className="flex-1 py-2 rounded-xl text-center"
+              style={{
+                backgroundColor: hasData
+                  ? netCalories > targetCalories ? 'rgba(239,68,68,0.08)' : 'rgba(99,102,241,0.08)'
+                  : 'rgba(0,0,0,0.04)',
+              }}
+            >
+              <p
+                className="text-[13px] font-bold tabular-nums"
+                style={{
+                  color: hasData
+                    ? netCalories > targetCalories ? '#DC2626' : '#6366F1'
+                    : '#9CA3AF',
+                }}
+              >
+                {hasData ? netCalories : '—'}
+              </p>
+              <p className="text-[9px] text-muted-foreground mt-0.5">净摄入</p>
+            </div>
+          </div>
+          {hasData && activeBurn > 0 && (
+            <p
+              className="text-[10px] text-center mt-1.5 font-medium tabular-nums"
+              style={{ color: netRemaining >= 0 ? '#16A34A' : '#DC2626' }}
+            >
+              {netRemaining >= 0
+                ? `运动后还可净摄入 ${netRemaining} kcal`
+                : `净摄入已超出目标 ${-netRemaining} kcal`}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="mx-4 border-t border-border/50" />
 
@@ -254,8 +320,11 @@ export default function TodayNutritionCard({ record, profile }: TodayNutritionCa
 
         <div className="relative mb-1.5">
           <div
-            className="h-2.5 rounded-full overflow-hidden"
-            style={{ background: 'linear-gradient(to right, #16A34A, #84CC16, #F59E0B, #EF4444)' }}
+            className="h-2.5 rounded-full overflow-hidden transition-opacity duration-500"
+            style={{
+              background: 'linear-gradient(to right, #16A34A, #84CC16, #F59E0B, #EF4444)',
+              opacity: hasData ? 1 : 0.2,
+            }}
           />
           {hasData && (
             <div

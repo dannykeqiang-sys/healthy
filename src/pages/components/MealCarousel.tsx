@@ -1,12 +1,20 @@
-import { useRef, useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { useRef, useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
 import { Sunrise, Sun, Moon, Cookie, Dumbbell, Droplets } from 'lucide-react';
 import MealCardSlot from './MealCardSlot';
 import ExerciseCardSlot from './ExerciseCardSlot';
 import WaterCardSlot from './WaterCardSlot';
-import type { MealSlotConfig } from './MealCardSlot';
+import type { MealSlotConfig, MacroTarget } from './MealCardSlot';
 import type { ExerciseSlotConfig } from './ExerciseCardSlot';
 import type { WaterSlotConfig } from './WaterCardSlot';
 import type { DailyRecord, MealType, FoodItem, ExerciseItem, WaterItem, UserProfile } from '../../types';
+import { calcMacroTargets, getDefaultMacroTargets } from '../../utils/calculations';
+
+const MEAL_RATIOS: Record<MealType, number> = {
+  breakfast: 0.25,
+  lunch: 0.35,
+  dinner: 0.30,
+  snack: 0.10,
+};
 
 export type CarouselCardType = MealType | 'exercise' | 'water';
 
@@ -16,7 +24,60 @@ export interface MealCarouselRef {
 
 const CARD_ORDER: CarouselCardType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'exercise', 'water'];
 
-const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
+const IMAGE_POOLS: Record<CarouselCardType, string[]> = {
+  breakfast: [
+    'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&q=80',
+    'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=800&q=80',
+    'https://images.unsplash.com/photo-1551248429-40975aa4de74?w=800&q=80',
+    'https://images.unsplash.com/photo-1525351484163-7529414344d8?w=800&q=80',
+    'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=800&q=80',
+  ],
+  lunch: [
+    'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
+    'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
+    'https://images.unsplash.com/photo-1547592180-85f173990554?w=800&q=80',
+    'https://images.unsplash.com/photo-1529692236671-f1f6cf9683ba?w=800&q=80',
+    'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800&q=80',
+  ],
+  dinner: [
+    'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=80',
+    'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
+    'https://images.unsplash.com/photo-1544025162-d76538941a80?w=800&q=80',
+    'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80',
+    'https://images.unsplash.com/photo-1476224203421-9ac39bcb3b48?w=800&q=80',
+  ],
+  snack: [
+    'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=800&q=80',
+    'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&q=80',
+    'https://images.unsplash.com/photo-1559181567-c3190958d845?w=800&q=80',
+    'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800&q=80',
+    'https://images.unsplash.com/photo-1504630083234-14187a9df0f5?w=800&q=80',
+  ],
+  exercise: [
+    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
+    'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800&q=80',
+    'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&q=80',
+    'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=800&q=80',
+    'https://images.unsplash.com/photo-1518611012118-696072aa579a?w=800&q=80',
+  ],
+  water: [
+    'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=800&q=80',
+    'https://images.unsplash.com/photo-1523362628745-0c100150b504?w=800&q=80',
+    'https://images.unsplash.com/photo-1499638673-c22d679197ed?w=800&q=80',
+    'https://images.unsplash.com/photo-1500829996759-6e4f5f8dcc43?w=800&q=80',
+    'https://images.unsplash.com/photo-1536489885935-3513cf28dd77?w=800&q=80',
+  ],
+};
+
+function getDailyImageUrl(type: CarouselCardType, dateStr: string): string {
+  const pool = IMAGE_POOLS[type] ?? [];
+  if (!pool.length) return '';
+  let hash = 0;
+  for (const ch of (dateStr + type)) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  return pool[hash % pool.length];
+}
+
+const MEAL_CONFIGS_BASE: (Omit<MealSlotConfig, 'imageUrl'> & { type: MealType; pageBg: string })[] = [
   {
     type: 'breakfast',
     label: '早餐',
@@ -30,7 +91,6 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #FFF9F0, #FEEDD5, #FFF5E6)',
     time: '07:00 ~ 09:00',
     placeholder: '如：燕麦粥、鸡蛋、牛奶',
-    imageUrl: 'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&q=80',
   },
   {
     type: 'lunch',
@@ -45,7 +105,6 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #F2FFF5, #D5F8E2, #EDFBF2)',
     time: '11:30 ~ 13:30',
     placeholder: '如：米饭、鸡胸肉、炒蔬菜',
-    imageUrl: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
   },
   {
     type: 'dinner',
@@ -60,7 +119,6 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #F0F5FF, #D8E8FF, #EBF3FF)',
     time: '17:30 ~ 19:30',
     placeholder: '如：清蒸鱼、豆腐、绿叶菜',
-    imageUrl: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=80',
   },
   {
     type: 'snack',
@@ -75,11 +133,10 @@ const MEAL_CONFIGS: (MealSlotConfig & { type: MealType; pageBg: string })[] = [
     pageBg: 'linear-gradient(145deg, #FFF2F8, #FBE2F1, #FFF0F8)',
     time: '随时',
     placeholder: '如：水果、坚果、酸奶',
-    imageUrl: 'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=800&q=80',
   },
 ];
 
-const EXERCISE_CONFIG: ExerciseSlotConfig & { pageBg: string } = {
+const EXERCISE_CONFIG_BASE: ExerciseSlotConfig & { pageBg: string } = {
   label: '运动',
   en: 'EXERCISE',
   num: '05',
@@ -87,10 +144,9 @@ const EXERCISE_CONFIG: ExerciseSlotConfig & { pageBg: string } = {
   accent: '#60A5FA',
   pageBg: 'linear-gradient(145deg, #EDF6FF, #D8EEFF, #E8F4FF)',
   time: '',
-  imageUrl: 'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
 };
 
-const WATER_CONFIG: WaterSlotConfig & { pageBg: string } = {
+const WATER_CONFIG_BASE: WaterSlotConfig & { pageBg: string } = {
   label: '喝水',
   en: 'HYDRATION',
   num: '06',
@@ -98,16 +154,9 @@ const WATER_CONFIG: WaterSlotConfig & { pageBg: string } = {
   accent: '#0EA5E9',
   pageBg: 'linear-gradient(145deg, #EFF9FF, #E0F4FD, #F0F9FF)',
   time: '全天',
-  imageUrl: 'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=800&q=80',
 };
 
-const ALL_IMAGES = [
-  ...MEAL_CONFIGS.map(c => c.imageUrl ?? ''),
-  EXERCISE_CONFIG.imageUrl ?? '',
-  WATER_CONFIG.imageUrl ?? '',
-];
-
-const ALL_ACCENT = [...MEAL_CONFIGS.map(c => c.accent), EXERCISE_CONFIG.accent, WATER_CONFIG.accent];
+const ALL_ACCENT = [...MEAL_CONFIGS_BASE.map(c => c.accent), EXERCISE_CONFIG_BASE.accent, WATER_CONFIG_BASE.accent];
 
 interface MealCarouselProps {
   record: DailyRecord;
@@ -115,16 +164,50 @@ interface MealCarouselProps {
   isViewingToday?: boolean;
   profile?: UserProfile | null;
   journalDate?: string;
+  fullscreen?: boolean;
   onChange: (record: DailyRecord) => void;
   onWaterReplace?: (items: WaterItem[]) => void;
 }
 
 const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
-  ({ record, apiKey, isViewingToday = true, profile, journalDate, onChange, onWaterReplace }, ref) => {
+  ({ record, apiKey, isViewingToday = true, profile, journalDate, fullscreen = false, onChange, onWaterReplace }, ref) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [highlightedType, setHighlightedType] = useState<CarouselCardType | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+    const { proteinTarget, carbsTarget, fatTarget } = profile
+      ? calcMacroTargets(profile)
+      : getDefaultMacroTargets();
+
+    const allItems = Object.values(record.meals).flat() as FoodItem[];
+    const totalProtein = Math.round(allItems.reduce((s, f) => s + (f.protein ?? 0), 0));
+    const totalCarbs = Math.round(allItems.reduce((s, f) => s + (f.carbs ?? 0), 0));
+    const totalFat = Math.round(allItems.reduce((s, f) => s + (f.fat ?? 0), 0));
+
+    const uneatenRatioSum = MEAL_CONFIGS_BASE
+      .filter(m => record.meals[m.type].length === 0)
+      .reduce((sum, m) => sum + MEAL_RATIOS[m.type], 0);
+
+    const dateStr = journalDate ?? '';
+    const mealConfigs = useMemo(() =>
+      MEAL_CONFIGS_BASE.map(cfg => ({ ...cfg, imageUrl: getDailyImageUrl(cfg.type, dateStr) })),
+      [dateStr]
+    );
+    const exerciseConfig = useMemo(() =>
+      ({ ...EXERCISE_CONFIG_BASE, imageUrl: getDailyImageUrl('exercise', dateStr) }),
+      [dateStr]
+    );
+    const waterConfig = useMemo(() =>
+      ({ ...WATER_CONFIG_BASE, imageUrl: getDailyImageUrl('water', dateStr) }),
+      [dateStr]
+    );
+
+    const allImages = useMemo(() => [
+      ...mealConfigs.map(c => c.imageUrl),
+      exerciseConfig.imageUrl,
+      waterConfig.imageUrl,
+    ], [mealConfigs, exerciseConfig, waterConfig]);
 
     const scrollCardIntoView = (index: number, behavior: ScrollBehavior = 'smooth') => {
       const container = containerRef.current;
@@ -149,17 +232,26 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
     useEffect(() => {
       const container = containerRef.current;
       if (!container) return;
-      const observers: IntersectionObserver[] = [];
-      cardRefs.current.forEach((card, i) => {
-        if (!card) return;
-        const obs = new IntersectionObserver(
-          ([entry]) => { if (entry.isIntersecting) setActiveIndex(i); },
-          { root: container, threshold: 0.5 }
-        );
-        obs.observe(card);
-        observers.push(obs);
-      });
-      return () => observers.forEach(obs => obs.disconnect());
+
+      const updateActive = () => {
+        const center = container.scrollLeft + container.clientWidth / 2;
+        let closest = 0;
+        let minDist = Infinity;
+        cardRefs.current.forEach((card, i) => {
+          if (!card) return;
+          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+          const dist = Math.abs(center - cardCenter);
+          if (dist < minDist) { minDist = dist; closest = i; }
+        });
+        setActiveIndex(closest);
+      };
+
+      container.addEventListener('scroll', updateActive, { passive: true });
+      const raf = requestAnimationFrame(updateActive);
+      return () => {
+        container.removeEventListener('scroll', updateActive);
+        cancelAnimationFrame(raf);
+      };
     }, []);
 
     const handleFoodAdd = useCallback((mealType: MealType, item: FoodItem) => {
@@ -174,6 +266,19 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
       onChange({ ...record, meals: { ...record.meals, [mealType]: record.meals[mealType].map(f => f.id === item.id ? item : f) } });
     }, [record, onChange]);
 
+    const mealHandlers = useMemo(() => {
+      const map = {} as Record<MealType, { onAdd: (item: FoodItem) => void; onRemove: (id: string) => void; onUpdate: (item: FoodItem) => void }>;
+      for (const cfg of MEAL_CONFIGS_BASE) {
+        const type = cfg.type;
+        map[type] = {
+          onAdd: (item: FoodItem) => handleFoodAdd(type, item),
+          onRemove: (id: string) => handleFoodRemove(type, id),
+          onUpdate: (item: FoodItem) => handleFoodUpdate(type, item),
+        };
+      }
+      return map;
+    }, [handleFoodAdd, handleFoodRemove, handleFoodUpdate]);
+
     const handleExerciseAdd = useCallback((item: ExerciseItem) => {
       onChange({ ...record, exercises: [...record.exercises, item] });
     }, [record, onChange]);
@@ -187,15 +292,15 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
     }, [record, onChange]);
 
     const handleWaterAdd = useCallback((item: WaterItem) => {
-      onChange({ ...record, water: [...(record.water || []), item] });
+      onChange({ ...record, water: [...(record.water ?? []), item] });
     }, [record, onChange]);
 
     const handleWaterRemove = useCallback((id: string) => {
-      onChange({ ...record, water: (record.water || []).filter(w => w.id !== id) });
+      onChange({ ...record, water: (record.water ?? []).filter(w => w.id !== id) });
     }, [record, onChange]);
 
     const handleWaterUpdate = useCallback((item: WaterItem) => {
-      onChange({ ...record, water: (record.water || []).map(w => w.id === item.id ? item : w) });
+      onChange({ ...record, water: (record.water ?? []).map(w => w.id === item.id ? item : w) });
     }, [record, onChange]);
 
     const handleWaterReplaceLocal = useCallback((items: WaterItem[]) => {
@@ -209,8 +314,10 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
     const accent = ALL_ACCENT[activeIndex] ?? ALL_ACCENT[0];
 
     return (
-      <div className="relative rounded-3xl overflow-hidden">
-        {ALL_IMAGES.map((src, i) => (
+      <div
+        className={`relative overflow-hidden ${fullscreen ? 'h-full flex flex-col' : 'rounded-3xl'}`}
+      >
+        {allImages.map((src, i) => (
           <div
             key={src + i}
             className="absolute inset-0 bg-cover bg-center"
@@ -225,7 +332,9 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
         <div
           className="absolute inset-0"
           style={{
-            background: 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.72) 100%)',
+            background: fullscreen
+              ? 'linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.45) 35%, rgba(255,255,255,0.68) 100%)'
+              : 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.72) 100%)',
             backdropFilter: 'blur(2px)',
             zIndex: 1,
           }}
@@ -233,7 +342,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
 
         <div
           ref={containerRef}
-          className="meal-carousel-scroll relative flex overflow-x-auto snap-x snap-mandatory gap-4 py-6"
+          className={`meal-carousel-scroll relative flex overflow-x-auto snap-x snap-mandatory gap-4 ${fullscreen ? 'flex-1 py-4' : 'py-6'}`}
           style={{
             paddingLeft: 'calc(50% - min(41vw, 200px))',
             paddingRight: 'calc(50% - min(41vw, 200px))',
@@ -241,34 +350,52 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
             zIndex: 2,
           }}
         >
-          {MEAL_CONFIGS.map((cfg, i) => (
-            <div
-              key={cfg.type}
-              ref={el => { cardRefs.current[i] = el; }}
-              className="snap-center flex-shrink-0"
-            >
-              <MealCardSlot
-                config={cfg}
-                items={record.meals[cfg.type]}
-                apiKey={apiKey}
-                isActive={activeIndex === i}
-                isHighlighted={highlightedType === cfg.type}
-                profile={profile}
-                onAdd={item => handleFoodAdd(cfg.type, item)}
-                onRemove={id => handleFoodRemove(cfg.type, id)}
-                onUpdate={item => handleFoodUpdate(cfg.type, item)}
-              />
-            </div>
-          ))}
+          {mealConfigs.map((cfg, i) => {
+            const ratio = MEAL_RATIOS[cfg.type];
+            const hasItems = record.meals[cfg.type].length > 0;
+            const macroTarget: MacroTarget = hasItems
+              ? {
+                  protein: Math.max(1, Math.round(proteinTarget * ratio)),
+                  carbs: Math.max(1, Math.round(carbsTarget * ratio)),
+                  fat: Math.max(1, Math.round(fatTarget * ratio)),
+                  isRedistributed: false,
+                }
+              : {
+                  protein: Math.max(1, Math.round((proteinTarget - totalProtein) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))),
+                  carbs: Math.max(1, Math.round((carbsTarget - totalCarbs) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))),
+                  fat: Math.max(1, Math.round((fatTarget - totalFat) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))),
+                  isRedistributed: true,
+                };
+            return (
+              <div
+                key={cfg.type}
+                ref={el => { cardRefs.current[i] = el; }}
+                className={`snap-center flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
+              >
+                <MealCardSlot
+                  config={cfg}
+                  items={record.meals[cfg.type]}
+                  isActive={activeIndex === i}
+                  isHighlighted={highlightedType === cfg.type}
+                  macroTarget={macroTarget}
+                  fullscreen={fullscreen}
+                  onAdd={mealHandlers[cfg.type].onAdd}
+                  onRemove={mealHandlers[cfg.type].onRemove}
+                  onUpdate={mealHandlers[cfg.type].onUpdate}
+                />
+              </div>
+            );
+          })}
           <div
             ref={el => { cardRefs.current[4] = el; }}
-            className="snap-center flex-shrink-0"
+            className={`snap-center flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
           >
             <ExerciseCardSlot
-              config={EXERCISE_CONFIG}
+              config={exerciseConfig}
               items={record.exercises}
               isActive={activeIndex === 4}
               isHighlighted={highlightedType === 'exercise'}
+              fullscreen={fullscreen}
               journalDate={journalDate}
               onAdd={handleExerciseAdd}
               onRemove={handleExerciseRemove}
@@ -277,15 +404,17 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
           </div>
           <div
             ref={el => { cardRefs.current[5] = el; }}
-            className="snap-center flex-shrink-0"
+            className={`snap-center flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
           >
             <WaterCardSlot
-              config={WATER_CONFIG}
-              items={record.water || []}
+              config={waterConfig}
+              items={record.water ?? []}
               apiKey={apiKey}
               isActive={activeIndex === 5}
               isHighlighted={highlightedType === 'water'}
+              fullscreen={fullscreen}
               isViewingToday={isViewingToday}
+              profile={profile}
               onAdd={handleWaterAdd}
               onRemove={handleWaterRemove}
               onUpdate={handleWaterUpdate}
@@ -294,7 +423,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
           </div>
         </div>
 
-        <div className="relative flex items-center justify-center gap-1.5 pb-5" style={{ zIndex: 2 }}>
+        <div className={`relative flex items-center justify-center gap-1.5 flex-shrink-0 ${fullscreen ? 'pb-3 pt-1' : 'pb-5'}`} style={{ zIndex: 2 }}>
           {CARD_ORDER.map((type, i) => {
             const isActive = activeIndex === i;
             const dotAccent = ALL_ACCENT[i];

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from '@/components/shadcn/button';
 import { Input } from '@/components/shadcn/input';
 import { Label } from '@/components/shadcn/label';
-import { Eye, EyeOff, Key, ExternalLink, LogOut } from 'lucide-react';
+import { Eye, EyeOff, Key, ExternalLink, LogOut, Download, Upload } from 'lucide-react';
 
 interface SettingsPanelProps {
   open: boolean;
@@ -11,9 +11,11 @@ interface SettingsPanelProps {
   onClose: () => void;
   onSave: (key: string) => void;
   onLogout: () => void;
+  onExport: () => void;
+  onBatchImport: () => void;
 }
 
-export default function SettingsPanel({ open, apiKey, onClose, onSave, onLogout }: SettingsPanelProps) {
+export default function SettingsPanel({ open, apiKey, onClose, onSave, onLogout, onExport, onBatchImport }: SettingsPanelProps) {
   const [inputKey, setInputKey] = useState(apiKey);
   const [showKey, setShowKey] = useState(false);
 
@@ -97,7 +99,24 @@ export default function SettingsPanel({ open, apiKey, onClose, onSave, onLogout 
             </Button>
           </div>
 
-          <div className="pt-2 border-t border-border/50">
+          <div className="pt-2 border-t border-border/50 space-y-2">
+            <button
+              onClick={() => { onClose(); setTimeout(onBatchImport, 150); }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm text-foreground/70 hover:text-foreground hover:bg-muted transition-all cursor-pointer border border-dashed border-border/40 hover:border-border"
+            >
+              <Upload className="w-4 h-4" />
+              批量导入历史数据
+            </button>
+            <button
+              onClick={() => { onClose(); setTimeout(onExport, 150); }}
+              className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm text-foreground/70 hover:text-foreground hover:bg-muted transition-all cursor-pointer border border-dashed border-border/40 hover:border-border"
+            >
+              <Download className="w-4 h-4" />
+              导出所有记录数据
+            </button>
+          </div>
+
+          <div className="border-t border-border/50">
             <button
               onClick={() => {
                 if (window.confirm('确定要退出吗？将清除本地数据并返回引导页重新设置。')) {

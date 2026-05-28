@@ -1,6 +1,9 @@
 import type { UserProfile, BMIResult, ActivityLevel } from '../types';
 
 export function calcBMI(weight: number, height: number): BMIResult {
+  if (height <= 0 || weight <= 0) {
+    return { value: 0, category: '数据异常', color: '#9CA3AF', description: '请检查身高体重数据' };
+  }
   const h = height / 100;
   const value = Math.round((weight / (h * h)) * 10) / 10;
 
@@ -17,6 +20,7 @@ export function calcBMI(weight: number, height: number): BMIResult {
 
 export function calcBMR(profile: UserProfile): number {
   const { weight, height, age, gender } = profile;
+  if (weight <= 0 || height <= 0 || age <= 0) return 1500;
   if (gender === 'male') {
     return Math.round(10 * weight + 6.25 * height - 5 * age + 5);
   } else {
@@ -39,7 +43,34 @@ export function calcTDEE(profile: UserProfile): number {
 
 export function calcTargetCalories(profile: UserProfile): number {
   const tdee = calcTDEE(profile);
-  if (profile.goal === 'lose') return Math.round(tdee - 500);
+  if (profile.goal === 'lose') return Math.max(1200, Math.round(tdee - 500));
   if (profile.goal === 'gain') return Math.round(tdee + 300);
   return tdee;
+}
+
+export function calcMacroTargets(profile: UserProfile): { proteinTarget: number; carbsTarget: number; fatTarget: number } {
+  const cal = calcTargetCalories(profile);
+  if (profile.goal === 'lose') {
+    return {
+      proteinTarget: Math.round(cal * 0.35 / 4),
+      carbsTarget: Math.round(cal * 0.35 / 4),
+      fatTarget: Math.round(cal * 0.30 / 9),
+    };
+  }
+  if (profile.goal === 'gain') {
+    return {
+      proteinTarget: Math.round(cal * 0.30 / 4),
+      carbsTarget: Math.round(cal * 0.50 / 4),
+      fatTarget: Math.round(cal * 0.20 / 9),
+    };
+  }
+  return {
+    proteinTarget: Math.round(cal * 0.25 / 4),
+    carbsTarget: Math.round(cal * 0.50 / 4),
+    fatTarget: Math.round(cal * 0.25 / 9),
+  };
+}
+
+export function getDefaultMacroTargets(): { proteinTarget: number; carbsTarget: number; fatTarget: number } {
+  return { proteinTarget: 125, carbsTarget: 250, fatTarget: 56 };
 }

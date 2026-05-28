@@ -9,6 +9,8 @@ import WeeklyStatsModal from './WeeklyStatsModal';
 import WeeklyCharts from './WeeklyCharts';
 import TodayDualRingBar from './TodayDualRingBar';
 import InflammationIndexCard from './InflammationIndexCard';
+import SodiumAnalysisCard from './SodiumAnalysisCard';
+import ActivityBurnCard from './ActivityBurnCard';
 
 interface AnalyticsPanelProps {
   profile: UserProfile | null;
@@ -26,7 +28,7 @@ const ACTIVITY_FACTOR: Record<string, number> = {
 
 const PURE_WATER_KW = ['水', '矿泉', '开水', '温水', '凉水', '白水', '饮用', '纯净', '蒸馏', '自来'];
 
-function isPureWater(note: string): boolean {
+function isPureWater(note: string | undefined): boolean {
   if (!note || note.trim() === '') return true;
   return PURE_WATER_KW.some(kw => note.includes(kw));
 }
@@ -119,6 +121,7 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
           const protein = Math.round(allFoods.reduce((s, f) => s + (f.protein ?? 0), 0));
           const carbs = Math.round(allFoods.reduce((s, f) => s + (f.carbs ?? 0), 0));
           const fat = Math.round(allFoods.reduce((s, f) => s + (f.fat ?? 0), 0));
+          const sodium = Math.round(allFoods.reduce((s, f) => s + (f.sodium ?? 0), 0));
           const exercises = (rec.exercises || []).map(e => ({
             name: e.name,
             duration: e.duration,
@@ -137,6 +140,7 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
             protein,
             carbs,
             fat,
+            sodium,
             exercises,
             weight: weightRecords[date],
           });
@@ -153,6 +157,7 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
             protein: 0,
             carbs: 0,
             fat: 0,
+            sodium: 0,
             exercises: [],
             weight: weightRecords[date],
           });
@@ -199,11 +204,17 @@ export default function AnalyticsPanel({ profile, record, journalDate }: Analyti
         <WeeklyCharts stats={stats} targetCalories={targetCalories} />
       )}
 
+      {!loading && stats.length > 0 && (
+        <ActivityBurnCard stats={stats} />
+      )}
+
       <InflammationIndexCard
         profile={profile}
         record={record}
         waterAmount={totalWater}
       />
+
+      <SodiumAnalysisCard profile={profile} record={record} />
 
       <button
         data-tutorial="chart"

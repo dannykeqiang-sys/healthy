@@ -11,6 +11,7 @@ interface SmartAdvicePanelProps {
   profile: UserProfile | null;
   record: DailyRecord;
   apiKey: string;
+  isViewingToday?: boolean;
 }
 
 type PanelStatus = 'ready' | 'loading' | 'revealed' | 'error';
@@ -116,7 +117,8 @@ function isAllEmpty(record: DailyRecord): boolean {
     (record.water || []).length === 0;
 }
 
-function determineMode(record: DailyRecord): 'next_meal' | 'tomorrow' {
+function determineMode(record: DailyRecord, isViewingToday: boolean): 'next_meal' | 'tomorrow' | 'review' {
+  if (!isViewingToday) return 'review';
   const hour = new Date().getHours();
   const hasAllMainMeals =
     record.meals.breakfast.length > 0 &&
@@ -184,7 +186,7 @@ function genStaticAdvices(profile: UserProfile, record: DailyRecord): StaticAdvi
   return advices.slice(0, 4);
 }
 
-export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvicePanelProps) {
+export default function SmartAdvicePanel({ profile, record, apiKey, isViewingToday = true }: SmartAdvicePanelProps) {
   const [status, setStatus] = useState<PanelStatus>('ready');
   const [result, setResult] = useState<SmartAdviceResult | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -247,7 +249,7 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
         })
         .join('\n') || '暂无近期历史';
 
-      const mode = determineMode(record);
+      const mode = determineMode(record, isViewingToday);
       const data = await generateSmartAdvice(apiKey, buildTodaySummary(profile, record, trainingPlan), historyContext, mode);
       const snapshotKey = buildSnapshotKey(record, trainingPlan);
       saveCache(record.date, { snapshotKey, result: data });
@@ -259,10 +261,24 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
     }
   };
 
+  const generateBtnLabel = isViewingToday ? '生成今日锦囊' : '生成历史复盘';
+  const emptyHint = isViewingToday
+    ? '让 AI 卡卡为你推演今日锦囊'
+    : '让 AI 卡卡帮你复盘这一天';
+  const emptySubHint = isViewingToday
+    ? '综合早、中、晚、加、动、水六维数据，智能路由至最适合你的时段策略'
+    : '基于这一天的饮食与运动数据，生成温柔的复盘洞察';
+  const loadingText = isViewingToday
+    ? '卡卡正在为你推演专属锦囊...'
+    : '卡卡正在为你复盘这一天...';
+
   const handleGenerate = () => {
     if (!profile) { showAlert('请先在右上角完善个人信息，再来生成专属锦囊～'); return; }
     if (!apiKey) { showAlert('请先在设置中填写 DeepSeek API Key'); return; }
-    if (isAllEmpty(record)) { showAlert('小主，今日手帐还是空白的呢，先随便记点什么，再来听听我的碎碎念吧～'); return; }
+    if (isAllEmpty(record)) {
+      showAlert(isViewingToday ? '小主，今日手帐还是空白的呢，先随便记点什么，再来听听我的碎碎念吧～' : '这一天还没有任何记录，无法生成复盘～');
+      return;
+    }
 
     const snapshot = buildSnapshotKey(record, trainingPlan);
     const cache = loadCache(record.date);
@@ -287,35 +303,37 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
 
   return (
     <div className="w-full h-auto flex flex-col space-y-4">
-      <div className="rounded-2xl border border-border bg-white/60 p-4 space-y-2.5">
-        <div className="flex items-center gap-2">
-          <div className="w-6 h-6 rounded-lg bg-violet-100 flex items-center justify-center">
-            <Dumbbell className="w-3.5 h-3.5 text-violet-500" />
+      {isViewingToday && (
+        <div className="rounded-2xl border border-border bg-white/60 p-4 space-y-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-lg bg-violet-100 flex items-center justify-center">
+              <Dumbbell className="w-3.5 h-3.5 text-violet-500" />
+            </div>
+            <p className="text-sm font-semibold text-foreground">今日训练计划</p>
+            <p className="text-xs text-muted-foreground">单选，AI 将定制加餐方案</p>
           </div>
-          <p className="text-sm font-semibold text-foreground">今日训练计划</p>
-          <p className="text-xs text-muted-foreground">单选，AI 将定制加餐方案</p>
+          <div className="flex flex-wrap gap-2">
+            {TRAINING_PARTS.map(part => {
+              const active = trainingPlan.includes(part.id);
+              return (
+                <button
+                  key={part.id}
+                  onClick={() => selectTraining(part.id)}
+                  className="px-3.5 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer border"
+                  style={{
+                    backgroundColor: active ? `${part.color}18` : 'transparent',
+                    borderColor: active ? `${part.color}60` : 'rgba(0,0,0,0.1)',
+                    color: active ? part.color : 'var(--muted-foreground)',
+                    boxShadow: active ? `0 0 0 2px ${part.color}30` : 'none',
+                  }}
+                >
+                  {part.id}
+                </button>
+              );
+            })}
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          {TRAINING_PARTS.map(part => {
-            const active = trainingPlan.includes(part.id);
-            return (
-              <button
-                key={part.id}
-                onClick={() => selectTraining(part.id)}
-                className="px-3.5 py-1.5 rounded-full text-sm font-medium transition-all cursor-pointer border"
-                style={{
-                  backgroundColor: active ? `${part.color}18` : 'transparent',
-                  borderColor: active ? `${part.color}60` : 'rgba(0,0,0,0.1)',
-                  color: active ? part.color : 'var(--muted-foreground)',
-                  boxShadow: active ? `0 0 0 2px ${part.color}30` : 'none',
-                }}
-              >
-                {part.id}
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      )}
 
       {workoutNutrition && (
         <div className="space-y-2.5" style={{ animation: 'smart-fade-in 0.3s ease both' }}>
@@ -362,12 +380,12 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
             <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-secondary border-2 border-white" />
           </div>
           <div>
-            <p className="font-semibold text-foreground text-base">让 AI 卡卡为你推演今日锦囊</p>
-            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">综合早、中、晚、加、动、水六维数据，智能路由至最适合你的时段策略</p>
+            <p className="font-semibold text-foreground text-base">{emptyHint}</p>
+            <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">{emptySubHint}</p>
           </div>
           <Button onClick={handleGenerate} className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer gap-2 px-6">
             <Sparkles className="w-4 h-4" />
-            生成今日锦囊
+            {generateBtnLabel}
           </Button>
         </div>
       )}
@@ -384,8 +402,8 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
             ))}
           </div>
           <div>
-            <p className="text-sm text-foreground font-medium">卡卡正在为你推演专属锦囊...</p>
-            <p className="text-xs text-muted-foreground mt-1">正在分析六维数据与近期趋势</p>
+            <p className="text-sm text-foreground font-medium">{loadingText}</p>
+            <p className="text-xs text-muted-foreground mt-1">{isViewingToday ? '正在分析六维数据与近期趋势' : '正在回顾饮食记录与运动情况'}</p>
           </div>
           <style>{`@keyframes smart-float { 0%, 100% { height: 10px; opacity: 0.5; } 50% { height: 28px; opacity: 1; } }`}</style>
         </div>
@@ -411,7 +429,7 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
               </div>
               <p className="text-sm font-bold text-foreground">{result.predictive_advice.title}</p>
             </div>
-            <span className="text-[10px] text-muted-foreground/60 tabular-nums">{new Date().toLocaleDateString('zh-CN')}</span>
+            <span className="text-[10px] text-muted-foreground/60 tabular-nums">{record.date}</span>
           </div>
 
           <div className="w-full p-3.5 rounded-xl border" style={{ backgroundColor: isNextMeal ? 'rgba(163,184,153,0.08)' : 'rgba(139,92,246,0.06)', borderColor: isNextMeal ? 'rgba(163,184,153,0.25)' : 'rgba(139,92,246,0.15)' }}>
@@ -485,7 +503,9 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
               style={{ opacity: hasDataChanged ? 1 : 0.35, cursor: hasDataChanged ? 'pointer' : 'not-allowed', color: 'var(--muted-foreground)' }}
             >
               <RefreshCw className="w-3 h-3" />
-              {hasDataChanged ? '数据有更新？点此重新推演' : '当前数据已是最新推演依据'}
+              {hasDataChanged
+                ? (isViewingToday ? '数据有更新？点此重新推演' : '数据有更新？点此重新复盘')
+                : (isViewingToday ? '当前数据已是最新推演依据' : '当前数据已是最新复盘依据')}
             </button>
             <button
               onClick={handleRegen}
@@ -508,7 +528,11 @@ export default function SmartAdvicePanel({ profile, record, apiKey }: SmartAdvic
               </div>
               <p className="font-semibold text-foreground text-sm">检测到数据有更新</p>
             </div>
-            <p className="text-sm text-muted-foreground leading-relaxed">需要重新为你推演新的{determineMode(record) === 'next_meal' ? '下一餐' : '翌日'}策略吗？</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              {isViewingToday
+                ? `需要重新为你推演新的${determineMode(record, isViewingToday) === 'next_meal' ? '下一餐' : '翌日'}策略吗？`
+                : '数据有变化，需要重新生成这一天的复盘吗？'}
+            </p>
             <div className="flex gap-2">
               <button onClick={() => setConfirmOpen(false)} className="flex-1 py-2.5 rounded-xl border border-border text-sm text-muted-foreground hover:bg-muted/50 cursor-pointer transition-colors">暂不更新</button>
               <button onClick={callApi} className="flex-1 py-2.5 rounded-xl bg-primary text-white text-sm font-medium cursor-pointer hover:bg-primary/90 transition-colors">确认重新推演</button>

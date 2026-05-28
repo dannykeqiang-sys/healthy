@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Trash2, Check, X, Plus, Sparkles, Loader2, Pencil } from 'lucide-react';
-import type { WaterItem } from '../../types';
+import type { WaterItem, UserProfile } from '../../types';
 import { parseWaterContent } from '../../utils/deepseek';
 import type { WaterLogItem } from '../../utils/deepseek';
 
@@ -21,6 +21,8 @@ interface WaterCardSlotProps {
   isActive: boolean;
   isHighlighted: boolean;
   isViewingToday?: boolean;
+  fullscreen?: boolean;
+  profile?: UserProfile | null;
   onAdd: (item: WaterItem) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: WaterItem) => void;
@@ -69,8 +71,6 @@ interface EditState {
 
 type InputStatus = 'idle' | 'parsing' | 'confirm' | 'error';
 
-const GOAL = 2000;
-
 export default function WaterCardSlot({
   config,
   items,
@@ -78,6 +78,8 @@ export default function WaterCardSlot({
   isActive,
   isHighlighted,
   isViewingToday = true,
+  fullscreen = false,
+  profile,
   onAdd,
   onRemove,
   onUpdate,
@@ -93,7 +95,8 @@ export default function WaterCardSlot({
 
   const Icon = config.icon;
   const total = items.reduce((s, i) => s + i.amount, 0);
-  const percent = Math.min(100, Math.round((total / GOAL) * 100));
+  const goal = profile ? Math.min(3000, Math.max(1500, Math.round(profile.weight * 30))) : 2000;
+  const percent = Math.min(100, Math.round((total / goal) * 100));
 
   const handleQuickAdd = (amount: number) => {
     onAdd({ id: crypto.randomUUID(), amount, note: '', time: getNowTime() });
@@ -175,7 +178,7 @@ export default function WaterCardSlot({
   };
 
   const startEdit = (item: WaterItem) => {
-    setEditState({ id: item.id, amount: String(item.amount), note: item.note });
+    setEditState({ id: item.id, amount: String(item.amount), note: item.note ?? '' });
   };
 
   const commitEdit = () => {
@@ -196,13 +199,14 @@ export default function WaterCardSlot({
     if (e.key === 'Escape') cancelEdit();
   };
 
+  const showDetails = !fullscreen || isActive;
   const goalText = percent >= 100
     ? (isViewingToday ? '今日目标达成！' : '当日目标达成！')
-    : `目标 ${GOAL} ml`;
+    : `目标 ${goal} ml`;
 
   return (
     <div
-      className="relative w-[82vw] sm:w-[400px] min-h-[500px] rounded-3xl overflow-hidden flex flex-col select-none"
+      className={`relative w-[82vw] sm:w-[400px] rounded-3xl overflow-hidden flex flex-col select-none ${fullscreen ? 'h-full' : 'min-h-[500px]'}`}
       style={{
         transform: isActive ? 'scale(1)' : 'scale(0.93)',
         opacity: isActive ? 1 : 0.62,
@@ -214,7 +218,13 @@ export default function WaterCardSlot({
         outlineOffset: '3px',
       }}
     >
-      <div className="relative h-32 flex-shrink-0">
+      <div
+        className="relative flex-shrink-0 overflow-hidden"
+        style={{
+          height: fullscreen ? (isActive ? '200px' : '0px') : '8rem',
+          transition: 'height 0.6s cubic-bezier(0.4,0,0.2,1)',
+        }}
+      >
         {config.imageUrl ? (
           <img
             src={config.imageUrl}
@@ -277,7 +287,10 @@ export default function WaterCardSlot({
             </div>
           </div>
 
-          <div className="grid grid-cols-4 gap-1.5 mt-3">
+          <div
+            className="grid grid-cols-4 gap-1.5 mt-3"
+            style={{ opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: showDetails ? 'auto' : 'none' }}
+          >
             {QUICK_AMOUNTS.map(q => (
               <button
                 key={q.label}
@@ -296,7 +309,7 @@ export default function WaterCardSlot({
           </div>
         </div>
 
-        {inputStatus === 'confirm' && (
+        {showDetails && inputStatus === 'confirm' && (
           <div
             className="mx-5 mb-2 rounded-2xl border p-3 space-y-2.5"
             style={{ backgroundColor: `${config.accent}08`, borderColor: `${config.accent}30` }}
@@ -342,13 +355,16 @@ export default function WaterCardSlot({
           </div>
         )}
 
-        {inputStatus === 'error' && (
+        {showDetails && inputStatus === 'error' && (
           <div className="mx-5 mb-2 px-3 py-2 rounded-xl text-xs text-muted-foreground border border-destructive/20 bg-destructive/5">
             {errorMsg}
           </div>
         )}
 
-        <div className="flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0">
+        <div
+          className="flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0"
+          style={{ pointerEvents: showDetails ? 'auto' : 'none' }}
+        >
           {items.length === 0 && (
             <div className="flex items-center justify-center h-16 text-xs text-muted-foreground/50 tracking-wide">
               点击快捷按钮或输入食物/饮料记录水分
@@ -415,9 +431,15 @@ export default function WaterCardSlot({
           )}
         </div>
 
-        <div className="mx-5 mt-2 mb-0 h-px" style={{ backgroundColor: `${config.accent}20` }} />
+        <div
+          className="mx-5 mt-2 mb-0 h-px"
+          style={{ backgroundColor: `${config.accent}20`, opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease' }}
+        />
 
-        <div className="px-5 pt-3 pb-5">
+        <div
+          className="px-5 pt-3 pb-5"
+          style={{ opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: showDetails ? 'auto' : 'none' }}
+        >
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}

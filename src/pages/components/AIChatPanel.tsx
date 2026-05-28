@@ -28,7 +28,7 @@ const MEAL_LABELS: Record<string, string> = {
 function buildSystemPrompt(profile: UserProfile | null, record: DailyRecord): string {
   const totalIntake = Object.values(record.meals).flat().reduce((s, f) => s + f.calories, 0);
   const totalBurn = record.exercises.reduce((s, e) => s + e.calories, 0);
-  const waterTotal = record.water.reduce((s, w) => s + w.amount, 0);
+  const waterTotal = (record.water ?? []).reduce((s, w) => s + w.amount, 0);
 
   let profileInfo = '用户未设置个人信息。';
   if (profile) {

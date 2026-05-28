@@ -19,6 +19,7 @@ interface AIDrawerProps {
   onExercisesUpdate: (exercises: ExerciseItem[]) => void;
   onExercisesReplace: (exercises: ExerciseItem[]) => void;
   onWaterUpdate: (items: WaterItem[]) => void;
+  onWaterReplace?: (items: WaterItem[]) => void;
   onRecordSuccess?: () => void;
 }
 
@@ -134,6 +135,7 @@ export default function AIDrawer({
   onExercisesUpdate,
   onExercisesReplace,
   onWaterUpdate,
+  onWaterReplace,
   onRecordSuccess,
 }: AIDrawerProps) {
   const [activeTab, setActiveTab] = useState<'record' | 'chat'>('record');
@@ -283,6 +285,7 @@ export default function AIDrawer({
                 onExercisesUpdate={onExercisesUpdate}
                 onExercisesReplace={onExercisesReplace}
                 onWaterUpdate={onWaterUpdate}
+                onWaterReplace={onWaterReplace}
                 onRecordSuccess={onRecordSuccess}
               />
             </div>
