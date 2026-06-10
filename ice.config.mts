@@ -7,6 +7,7 @@ export default defineConfig(() => ({
   ssg: false,
   ssr: false,
   codeSplitting: false,
+  publicPath: '/healthy/',
   plugins: [
     icestark({ type: 'child' }),
     standards({

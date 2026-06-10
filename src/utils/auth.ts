@@ -9,7 +9,12 @@ export interface AuthSession {
 export function getSession(): AuthSession | null {
   try {
     const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
+    if (!raw) {
+      // 独立部署时自动创建默认 session，跳过登录
+      const defaultSession: AuthSession = { workid: 'demo', cname: '访客', avatar: '' };
+      localStorage.setItem(SESSION_KEY, JSON.stringify(defaultSession));
+      return defaultSession;
+    }
     const parsed = JSON.parse(raw) as AuthSession;
     return parsed?.workid ? parsed : null;
   } catch {
