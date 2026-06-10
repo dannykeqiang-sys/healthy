@@ -62,6 +62,7 @@ function MealSection({
   const [editId, setEditId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [editCalories, setEditCalories] = useState('');
+  const [aiMacros, setAiMacros] = useState<{ protein?: number; carbs?: number; fat?: number; sodium?: number } | null>(null);
 
   const Icon = config.icon;
   const total = items.reduce((s, f) => s + f.calories, 0);
@@ -73,9 +74,10 @@ function MealSection({
 
   const handleAdd = () => {
     if (!name.trim() || !calories) return;
-    onAdd({ id: crypto.randomUUID(), name: name.trim(), calories: Number(calories) });
+    onAdd({ id: crypto.randomUUID(), name: name.trim(), calories: Number(calories), ...(aiMacros ?? {}) });
     setName('');
     setCalories('');
+    setAiMacros(null);
   };
 
   const handleQuickAdd = (food: { name: string; calories: number }) => {
@@ -99,6 +101,7 @@ function MealSection({
       const result = await estimateCalories(apiKey, name.trim());
       setName(safeNormalizeString(result.food_name));
       setCalories(String(result.calories));
+      setAiMacros({ protein: result.protein, carbs: result.carbs, fat: result.fat, sodium: result.sodium });
       showToast(`AI 估算约 ${result.calories} kcal · ${safeNormalizeString(result.reason)}`);
     } catch {
       showToast('AI 估算失败，请手动输入热量');
@@ -232,7 +235,7 @@ function MealSection({
         <div className="flex gap-2">
           <Input
             value={name}
-            onChange={e => setName(e.target.value)}
+            onChange={e => { setName(e.target.value); setAiMacros(null); }}
             onBlur={handleNameBlur}
             placeholder={config.placeholder}
             className="bg-white/80 border-border/70 text-foreground placeholder:text-muted-foreground text-sm flex-1 min-w-0"

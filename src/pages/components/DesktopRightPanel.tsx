@@ -205,6 +205,15 @@ export default function DesktopRightPanel({
           const totalFat = Math.round(allItems.reduce((s, f) => s + (f.fat ?? 0), 0));
           const calPct = Math.min(100, Math.round((netCal / targetCal) * 100));
           const isOver = netCal > targetCal;
+          const MEAL_COLORS = { breakfast: '#F59E0B', lunch: '#A3B899', dinner: '#7CB9E8', snack: '#F472B6' };
+          const mealCals = {
+            breakfast: record.meals.breakfast.reduce((s, f) => s + f.calories, 0),
+            lunch: record.meals.lunch.reduce((s, f) => s + f.calories, 0),
+            dinner: record.meals.dinner.reduce((s, f) => s + f.calories, 0),
+            snack: record.meals.snack.reduce((s, f) => s + f.calories, 0),
+          };
+          const totalMealCal = Object.values(mealCals).reduce((s, v) => s + v, 0);
+          const barScale = totalMealCal > targetCal ? targetCal / totalMealCal : 1;
           return (
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
@@ -216,16 +225,18 @@ export default function DesktopRightPanel({
                 </div>
                 <WeightChip journalDate={journalDate} />
               </div>
-              <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'rgba(0,0,0,0.07)' }}>
-                <div
-                  className="h-full rounded-full transition-all duration-700"
-                  style={{
-                    width: `${calPct}%`,
-                    background: isOver
-                      ? 'linear-gradient(90deg, #F97316, #EF4444)'
-                      : 'linear-gradient(90deg, var(--primary), rgba(124,185,168,0.85))',
-                  }}
-                />
+              <div className="h-1.5 rounded-full overflow-hidden flex gap-px" style={{ backgroundColor: 'rgba(0,0,0,0.07)' }}>
+                {(['breakfast', 'lunch', 'dinner', 'snack'] as const).map(meal => {
+                  const w = (mealCals[meal] * barScale / targetCal) * 100;
+                  if (w < 0.5) return null;
+                  return (
+                    <div
+                      key={meal}
+                      className="h-full transition-all duration-700 first:rounded-l-full last:rounded-r-full"
+                      style={{ width: `${w}%`, backgroundColor: MEAL_COLORS[meal] }}
+                    />
+                  );
+                })}
               </div>
               <div className="flex items-center gap-1.5 text-[10px]">
                 <span className="font-semibold text-blue-500">P {totalProtein}g</span>

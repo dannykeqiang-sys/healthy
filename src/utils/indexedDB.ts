@@ -1,4 +1,5 @@
 import type { DailyRecord } from '../types';
+import { normalizeMeals } from './storage';
 
 const DB_NAME = 'calorie_manager_db';
 const DB_VERSION = 1;
@@ -43,7 +44,7 @@ export async function idbGetRecentRecords(days: number): Promise<DailyRecord[]> 
       req.onerror = () => reject(req.error);
       req.onsuccess = () => resolve((req.result as DailyRecord) ?? null);
     });
-    if (record) results.push(record);
+    if (record) results.push({ ...record, meals: normalizeMeals(record.meals), water: record.water ?? [] });
   }
   return results;
 }
@@ -55,7 +56,10 @@ export async function idbGetRecord(date: string): Promise<DailyRecord | null> {
     const store = tx.objectStore(STORE_NAME);
     const req = store.get(date);
     req.onerror = () => reject(req.error);
-    req.onsuccess = () => resolve((req.result as DailyRecord) ?? null);
+    req.onsuccess = () => {
+      const r = req.result as DailyRecord | undefined;
+      resolve(r ? { ...r, meals: normalizeMeals(r.meals), water: r.water ?? [] } : null);
+    };
   });
 }
 
@@ -66,6 +70,9 @@ export async function idbGetAllRecords(): Promise<DailyRecord[]> {
     const store = tx.objectStore(STORE_NAME);
     const req = store.getAll();
     req.onerror = () => reject(req.error);
-    req.onsuccess = () => resolve((req.result as DailyRecord[]) ?? []);
+    req.onsuccess = () => {
+      const rows = (req.result as DailyRecord[]) ?? [];
+      resolve(rows.map(r => ({ ...r, meals: normalizeMeals(r.meals), water: r.water ?? [] })));
+    };
   });
 }

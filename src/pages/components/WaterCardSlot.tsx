@@ -22,6 +22,8 @@ interface WaterCardSlotProps {
   isHighlighted: boolean;
   isViewingToday?: boolean;
   fullscreen?: boolean;
+  bareMode?: boolean;
+  noImage?: boolean;
   profile?: UserProfile | null;
   onAdd: (item: WaterItem) => void;
   onRemove: (id: string) => void;
@@ -79,6 +81,8 @@ export default function WaterCardSlot({
   isHighlighted,
   isViewingToday = true,
   fullscreen = false,
+  bareMode = false,
+  noImage = false,
   profile,
   onAdd,
   onRemove,
@@ -199,21 +203,25 @@ export default function WaterCardSlot({
     if (e.key === 'Escape') cancelEdit();
   };
 
-  const showDetails = !fullscreen || isActive;
+  const showDetails = bareMode ? isActive : (!fullscreen || isActive);
   const goalText = percent >= 100
     ? (isViewingToday ? '今日目标达成！' : '当日目标达成！')
     : `目标 ${goal} ml`;
 
   return (
     <div
-      className={`relative w-[82vw] sm:w-[400px] rounded-3xl overflow-hidden flex flex-col select-none ${fullscreen ? 'h-full' : 'min-h-[500px]'}`}
+      className={`relative ${bareMode ? 'w-[260px]' : 'w-[90vw] sm:w-[400px]'} rounded-[2rem] overflow-hidden flex flex-col select-none ${fullscreen ? 'h-full' : ''}`}
       style={{
-        transform: isActive ? 'scale(1)' : 'scale(0.93)',
-        opacity: isActive ? 1 : 0.62,
-        boxShadow: isActive
-          ? '0 24px 64px rgba(0,0,0,0.22), 0 8px 24px rgba(0,0,0,0.12)'
-          : '0 4px 16px rgba(0,0,0,0.08)',
-        transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease, box-shadow 0.5s ease',
+        maxHeight: fullscreen || bareMode ? undefined : noImage ? '280px' : (isActive ? '900px' : '216px'),
+        opacity: isActive ? 1 : bareMode ? 0.75 : 0.62,
+        boxShadow: bareMode
+          ? (isActive ? '0 8px 24px rgba(0,0,0,0.15)' : '0 2px 8px rgba(0,0,0,0.08)')
+          : (isActive
+              ? 'inset 0 1px 1px rgba(255,255,255,0.75), 0 24px 56px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.10)'
+              : 'inset 0 1px 1px rgba(255,255,255,0.55), 0 8px 24px rgba(0,0,0,0.07)'),
+        borderTop: bareMode ? undefined : '1.5px solid rgba(255,255,255,0.65)',
+        borderLeft: bareMode ? undefined : '1.5px solid rgba(255,255,255,0.45)',
+        transition: 'max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease, box-shadow 0.5s ease',
         outline: isHighlighted ? `2px solid ${config.accent}` : 'none',
         outlineOffset: '3px',
       }}
@@ -221,7 +229,7 @@ export default function WaterCardSlot({
       <div
         className="relative flex-shrink-0 overflow-hidden"
         style={{
-          height: fullscreen ? (isActive ? '200px' : '0px') : '8rem',
+          height: noImage ? '0px' : (bareMode && isActive ? '0px' : fullscreen ? (isActive ? '200px' : '0px') : '8rem'),
           transition: 'height 0.6s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
@@ -250,23 +258,37 @@ export default function WaterCardSlot({
       </div>
 
       <div
-        className="flex-1 flex flex-col min-h-0"
+        className={fullscreen ? 'flex-1 flex flex-col min-h-0' : 'flex flex-col'}
         style={{
-          background: 'rgba(255,255,255,0.82)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          background: noImage
+            ? `linear-gradient(135deg, ${config.accent}18 0%, rgba(255,255,255,0.68) 72px, rgba(255,255,255,0.60) 100%)`
+            : `linear-gradient(135deg, rgba(255,255,255,0.52) 0%, rgba(255,255,255,0.42) 100%)`,
+          backdropFilter: 'url(#liquid-distort) blur(28px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(190%)',
         }}
       >
+        {noImage && (
+          <div className="flex-shrink-0" style={{
+            height: '2.5px',
+            background: `linear-gradient(to right, ${config.accent}, ${config.accent}50, transparent)`,
+            opacity: isActive ? 1 : 0.5,
+          }} />
+        )}
         <div className="p-5 pb-3">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
               <div
                 className="w-9 h-9 rounded-2xl flex items-center justify-center"
-                style={{ backgroundColor: `${config.accent}20` }}
+                style={{ backgroundColor: `${config.accent}22` }}
               >
                 <Icon className="w-4 h-4" style={{ color: config.accent }} />
               </div>
-              <h2 className="text-xl font-black text-foreground leading-none tracking-tight">{config.label}</h2>
+              <div>
+                <h2 className="text-xl font-black text-foreground leading-none tracking-tight">{config.label}</h2>
+                {noImage && config.time && (
+                  <p className="text-[9px] text-muted-foreground/40 tracking-wide mt-0.5">{config.time}</p>
+                )}
+              </div>
             </div>
             <p className="text-sm font-bold tabular-nums pt-1" style={{ color: config.accent }}>{total} ml</p>
           </div>
@@ -295,7 +317,7 @@ export default function WaterCardSlot({
               <button
                 key={q.label}
                 onClick={() => handleQuickAdd(q.amount)}
-                className="flex flex-col items-center py-1.5 rounded-xl text-xs font-medium cursor-pointer active:scale-90 transition-all border"
+                className="flex flex-col items-center py-1.5 rounded-full text-xs font-medium cursor-pointer active:scale-90 transition-all border"
                 style={{
                   backgroundColor: `${config.accent}12`,
                   borderColor: `${config.accent}30`,
@@ -362,7 +384,7 @@ export default function WaterCardSlot({
         )}
 
         <div
-          className="flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0"
+          className={fullscreen ? 'flex-1 overflow-y-auto px-5 space-y-1.5 min-h-0' : 'px-5 space-y-1.5'}
           style={{ pointerEvents: showDetails ? 'auto' : 'none' }}
         >
           {items.length === 0 && (
@@ -404,7 +426,7 @@ export default function WaterCardSlot({
             ) : (
               <div
                 key={item.id}
-                className="group flex items-center justify-between py-2.5 px-3 rounded-2xl bg-white/65 border border-white/70 hover:bg-white/85 transition-colors"
+                className="group flex items-center justify-between py-2.5 px-3 rounded-full bg-white/52 border border-white/58 hover:bg-white/68 transition-colors"
                 style={{ animation: 'mealItemIn 0.38s cubic-bezier(0.4,0,0.2,1) both' }}
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -449,13 +471,13 @@ export default function WaterCardSlot({
               onKeyDown={handleKeyDown}
               disabled={inputStatus === 'parsing' || inputStatus === 'confirm'}
               placeholder={apiKey ? '输入任意食物/饮料，智能识别含水量' : '输入量，如：一大杯、300ml'}
-              className="flex-1 h-10 rounded-xl border border-white/80 bg-white/72 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 disabled:opacity-50"
+              className="flex-1 h-10 rounded-full border border-white/80 bg-white/72 px-3 text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none focus:ring-2 disabled:opacity-50"
               style={{ '--tw-ring-color': `${config.accent}40` } as React.CSSProperties}
             />
             <button
               onClick={handleSmartParse}
               disabled={!inputText.trim() || inputStatus === 'parsing' || inputStatus === 'confirm'}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 flex-shrink-0 disabled:opacity-40"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 flex-shrink-0 disabled:opacity-40"
               style={{ backgroundColor: config.accent }}
             >
               {inputStatus === 'parsing' ? (

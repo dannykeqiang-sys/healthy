@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { BookOpen, ChevronDown } from 'lucide-react';
 import type { UserProfile, DailyRecord } from '../../types';
+import { sumMacrosWithEstimate } from '../../utils/calculations';
 import InflammationKnowledge from './InflammationKnowledge';
 
 interface InflammationIndexCardProps {
@@ -135,10 +136,8 @@ export default function InflammationIndexCard({ profile, record, waterAmount }: 
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
   const allFoods = Object.values(record.meals).flat();
-  const protein = Math.round(allFoods.reduce((s, f) => s + (f.protein ?? 0), 0));
-  const carbs = Math.round(allFoods.reduce((s, f) => s + (f.carbs ?? 0), 0));
-  const fat = Math.round(allFoods.reduce((s, f) => s + (f.fat ?? 0), 0));
   const totalCalories = allFoods.reduce((s, f) => s + f.calories, 0);
+  const { protein, carbs, fat } = sumMacrosWithEstimate(record.meals);
   const exerciseBurn = record.exercises.reduce((s, e) => s + e.calories, 0);
 
   const { score, factors } = calcScore(protein, carbs, fat, exerciseBurn, waterAmount, totalCalories);

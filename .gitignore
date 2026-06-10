@@ -11,6 +11,8 @@
 .DS_Store
 *.swp
 *.dia~
+*.png
+.playwright-mcp/
 
 # logs
 npm-debug.log*

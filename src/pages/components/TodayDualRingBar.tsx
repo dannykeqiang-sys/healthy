@@ -1,5 +1,5 @@
 import type { UserProfile, DailyRecord } from '../../types';
-import { calcTDEE } from '../../utils/calculations';
+import { calcTargetCalories, calcMacroTargets, sumMacrosWithEstimate } from '../../utils/calculations';
 import MacroRingChart from './MacroRingChart';
 import { Zap, TrendingDown, Minus, TrendingUp } from 'lucide-react';
 
@@ -13,23 +13,23 @@ interface TodayDualRingBarProps {
 export default function TodayDualRingBar({ profile, record, dateLabel = '今日', currentWeight }: TodayDualRingBarProps) {
   const allFoods = Object.values(record.meals).flat();
   const intake = allFoods.reduce((sum, f) => sum + f.calories, 0);
-  const protein = Math.round(allFoods.reduce((sum, f) => sum + (f.protein ?? 0), 0));
-  const carbs = Math.round(allFoods.reduce((sum, f) => sum + (f.carbs ?? 0), 0));
-  const fat = Math.round(allFoods.reduce((sum, f) => sum + (f.fat ?? 0), 0));
   const totalBurn = record.exercises.reduce((sum, e) => sum + e.calories, 0);
   const hasData = allFoods.length > 0;
+  const { protein, carbs, fat } = sumMacrosWithEstimate(record.meals);
 
   const effectiveProfile = profile && currentWeight !== undefined ? { ...profile, weight: currentWeight } : profile;
-  const tdee = effectiveProfile ? calcTDEE(effectiveProfile) : 2000;
-  const targetCalories = tdee + totalBurn;
+  const goalBase = effectiveProfile ? calcTargetCalories(effectiveProfile) : 2000;
+  const targetCalories = goalBase + totalBurn;
   const surplus = intake - targetCalories;
   const isBalance = Math.abs(surplus) <= 50;
   const isOver = surplus > 50;
   const remaining = Math.max(0, targetCalories - intake);
 
-  const proteinTarget = Math.round(targetCalories * 0.30 / 4);
-  const carbsTarget = Math.round(targetCalories * 0.45 / 4);
-  const fatTarget = Math.round(targetCalories * 0.25 / 9);
+  const baseMacros = effectiveProfile ? calcMacroTargets(effectiveProfile) : { proteinTarget: 125, carbsTarget: 250, fatTarget: 56 };
+  const scale = goalBase > 0 && totalBurn > 0 ? targetCalories / goalBase : 1;
+  const proteinTarget = Math.round(baseMacros.proteinTarget * scale);
+  const carbsTarget = Math.round(baseMacros.carbsTarget * scale);
+  const fatTarget = Math.round(baseMacros.fatTarget * scale);
 
   const statusInfo = isBalance
     ? { icon: Minus, color: '#A3B899', label: '完美平衡' }
@@ -60,7 +60,7 @@ export default function TodayDualRingBar({ profile, record, dateLabel = '今日'
         )}
       </div>
 
-      <div className="flex flex-col items-center pb-2">
+      <div className="pb-1">
         <MacroRingChart
           intake={intake}
           targetCalories={targetCalories}

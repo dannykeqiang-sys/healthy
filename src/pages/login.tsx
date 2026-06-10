@@ -1,17 +1,22 @@
-import { useState, useRef, forwardRef } from 'react';
+import { useState, useRef, forwardRef, useCallback } from 'react';
 import { history } from 'ice';
 import { Flame, ArrowRight, Loader2, UserX, RefreshCw } from 'lucide-react';
 import { findProfileByName } from '../utils/supabaseDB';
 import { setSession } from '../utils/auth';
 import { saveProfile } from '../utils/storage';
+import VideoIntro, { VIDEO_URL } from './components/VideoIntro';
 
 type PageState = 'idle' | 'loading' | 'not-found' | 'error';
+
+const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768;
 
 export default function LoginPage() {
   const [name, setName] = useState('');
   const [state, setState] = useState<PageState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showOutro, setShowOutro] = useState(false);
+  const [outroLeaving, setOutroLeaving] = useState(false);
 
   const trimmed = name.trim();
   const canSubmit = trimmed.length > 0 && state !== 'loading';
@@ -25,7 +30,11 @@ export default function LoginPage() {
       if (result) {
         setSession(result.workid, trimmed);
         saveProfile(result.profile);
-        history?.push('/');
+        if (isDesktop) {
+          setShowOutro(true);
+        } else {
+          history?.push('/');
+        }
       } else {
         setState('not-found');
       }
@@ -34,6 +43,13 @@ export default function LoginPage() {
       setErrorMsg('网络异常，请稍后重试');
     }
   };
+
+  const handleOutroEnd = useCallback(() => {
+    setOutroLeaving(true);
+    setTimeout(() => {
+      history?.push('/');
+    }, 800);
+  }, []);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') handleLogin();
@@ -51,110 +67,124 @@ export default function LoginPage() {
   };
 
   return (
-    <div
-      className="fixed inset-0 overflow-auto flex items-center justify-center p-4"
-      style={{ background: 'linear-gradient(160deg, #FFF8F5 0%, #FFF0FA 60%, #F0F4FF 100%)' }}
-    >
-      <FloatingParticles />
+    <>
+      <video src={VIDEO_URL} preload="auto" muted playsInline style={{ display: 'none' }} />
 
-      <div className="relative w-full max-w-sm">
-        <div
-          className="text-center mb-8"
-          style={{ animation: 'loginPopIn 0.6s cubic-bezier(0.34,1.56,0.64,1)' }}
-        >
+      {showOutro && (
+        <VideoIntro onEnd={handleOutroEnd} leaving={outroLeaving} />
+      )}
+
+      <div
+        className="fixed inset-0 overflow-auto flex items-center justify-center p-4"
+        style={{
+          background: 'linear-gradient(160deg, #FFF8F5 0%, #FFF0FA 60%, #F0F4FF 100%)',
+          opacity: showOutro ? 0 : 1,
+          transform: showOutro ? 'scale(1.04)' : 'scale(1)',
+          transition: 'opacity 0.5s cubic-bezier(0.4,0,0.2,1), transform 0.5s cubic-bezier(0.4,0,0.2,1)',
+          pointerEvents: showOutro ? 'none' : 'auto',
+        }}
+      >
+        <FloatingParticles />
+
+        <div className="relative w-full max-w-sm">
           <div
-            className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg"
-            style={{ background: 'linear-gradient(135deg, #F97316, #EC4899)' }}
+            className="text-center mb-8"
+            style={{ animation: 'loginPopIn 0.6s cubic-bezier(0.34,1.56,0.64,1)' }}
           >
-            <Flame className="w-10 h-10 text-white" />
+            <div
+              className="w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-5 shadow-lg"
+              style={{ background: 'linear-gradient(135deg, #F97316, #EC4899)' }}
+            >
+              <Flame className="w-10 h-10 text-white" />
+            </div>
+            <h1
+              className="text-2xl font-black text-foreground mb-1"
+              style={{ fontFamily: '"Noto Serif SC", "Songti SC", serif' }}
+            >
+              燃烧我的卡路里
+            </h1>
+            <p className="text-sm text-muted-foreground">科学记录，遇见更好的自己</p>
           </div>
-          <h1
-            className="text-2xl font-black text-foreground mb-1"
-            style={{ fontFamily: '"Noto Serif SC", "Songti SC", serif' }}
+
+          <div
+            className="rounded-3xl p-6 shadow-sm"
+            style={{
+              background: 'rgba(255,255,255,0.85)',
+              backdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.7)',
+              animation: 'loginSlideUp 0.5s cubic-bezier(0.4,0,0.2,1) 0.1s both',
+            }}
           >
-            燃烧我的卡路里
-          </h1>
-          <p className="text-sm text-muted-foreground">科学记录，遇见更好的自己</p>
-        </div>
+            {state !== 'not-found' ? (
+              <>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 pl-1">你的昵称</p>
+                <NameInput
+                  ref={inputRef}
+                  value={name}
+                  onChange={v => { setName(v); if (state === 'error') setState('idle'); }}
+                  onKeyDown={handleKeyDown}
+                  disabled={state === 'loading'}
+                />
 
-        <div
-          className="rounded-3xl p-6 shadow-sm"
-          style={{
-            background: 'rgba(255,255,255,0.85)',
-            backdropFilter: 'blur(20px)',
-            border: '1px solid rgba(255,255,255,0.7)',
-            animation: 'loginSlideUp 0.5s cubic-bezier(0.4,0,0.2,1) 0.1s both',
-          }}
-        >
-          {state !== 'not-found' ? (
-            <>
-              <p className="text-xs font-semibold text-muted-foreground mb-2 pl-1">你的昵称</p>
-              <NameInput
-                ref={inputRef}
-                value={name}
-                onChange={v => { setName(v); if (state === 'error') setState('idle'); }}
-                onKeyDown={handleKeyDown}
-                disabled={state === 'loading'}
-              />
-
-              {state === 'error' && (
-                <p className="mt-2 text-xs text-red-500 pl-1">{errorMsg}</p>
-              )}
-
-              <button
-                onClick={handleLogin}
-                disabled={!canSubmit}
-                className="mt-4 w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
-                style={{
-                  background: canSubmit ? 'linear-gradient(135deg, #F97316, #EC4899)' : '#E5E7EB',
-                  boxShadow: canSubmit ? '0 8px 24px rgba(249,115,22,0.35)' : 'none',
-                }}
-              >
-                {state === 'loading' ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    查找中...
-                  </>
-                ) : (
-                  <>
-                    开始记录
-                    <ArrowRight className="w-4 h-4" />
-                  </>
+                {state === 'error' && (
+                  <p className="mt-2 text-xs text-red-500 pl-1">{errorMsg}</p>
                 )}
-              </button>
 
-              <p className="mt-4 text-center text-xs text-muted-foreground">
-                第一次来？
                 <button
-                  onClick={() => trimmed ? handleRegister() : inputRef.current?.focus()}
-                  className="ml-1 font-semibold cursor-pointer"
-                  style={{ color: '#F97316' }}
+                  onClick={handleLogin}
+                  disabled={!canSubmit}
+                  className="mt-4 w-full flex items-center justify-center gap-2 py-4 rounded-2xl text-sm font-bold text-white transition-all active:scale-[0.97] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                  style={{
+                    background: canSubmit ? 'linear-gradient(135deg, #F97316, #EC4899)' : '#E5E7EB',
+                    boxShadow: canSubmit ? '0 8px 24px rgba(249,115,22,0.35)' : 'none',
+                  }}
                 >
-                  创建健康档案
+                  {state === 'loading' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      查找中...
+                    </>
+                  ) : (
+                    <>
+                      开始记录
+                      <ArrowRight className="w-4 h-4" />
+                    </>
+                  )}
                 </button>
-              </p>
-            </>
-          ) : (
-            <NotFoundView name={trimmed} onRegister={handleRegister} onReset={handleReset} />
-          )}
-        </div>
-      </div>
 
-      <style>{`
-        @keyframes loginPopIn {
-          from { opacity: 0; transform: translateY(-20px) scale(0.88); }
-          to { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes loginSlideUp {
-          from { opacity: 0; transform: translateY(24px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        @keyframes particleFloat {
-          0% { transform: translateY(0) scale(0.8); opacity: 0.6; }
-          100% { transform: translateY(-110vh) scale(1.4); opacity: 0; }
-        }
-      `}</style>
-    </div>
+                <p className="mt-4 text-center text-xs text-muted-foreground">
+                  第一次来？
+                  <button
+                    onClick={() => trimmed ? handleRegister() : inputRef.current?.focus()}
+                    className="ml-1 font-semibold cursor-pointer"
+                    style={{ color: '#F97316' }}
+                  >
+                    创建健康档案
+                  </button>
+                </p>
+              </>
+            ) : (
+              <NotFoundView name={trimmed} onRegister={handleRegister} onReset={handleReset} />
+            )}
+          </div>
+        </div>
+
+        <style>{`
+          @keyframes loginPopIn {
+            from { opacity: 0; transform: translateY(-20px) scale(0.88); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+          @keyframes loginSlideUp {
+            from { opacity: 0; transform: translateY(24px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes particleFloat {
+            0% { transform: translateY(0) scale(0.8); opacity: 0.6; }
+            100% { transform: translateY(-110vh) scale(1.4); opacity: 0; }
+          }
+        `}</style>
+      </div>
+    </>
   );
 }
 

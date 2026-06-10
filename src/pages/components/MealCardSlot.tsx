@@ -32,6 +32,8 @@ interface MealCardSlotProps {
   isHighlighted: boolean;
   macroTarget?: MacroTarget;
   fullscreen?: boolean;
+  bareMode?: boolean;
+  noImage?: boolean;
   onAdd: (item: FoodItem) => void;
   onRemove: (id: string) => void;
   onUpdate: (item: FoodItem) => void;
@@ -426,6 +428,8 @@ export default function MealCardSlot({
   isHighlighted,
   macroTarget,
   fullscreen = false,
+  bareMode = false,
+  noImage = false,
   onAdd,
   onRemove,
   onUpdate,
@@ -450,8 +454,13 @@ export default function MealCardSlot({
   const totalCarbs = Math.round(items.reduce((s, f) => s + (f.carbs ?? 0), 0));
   const totalFat = Math.round(items.reduce((s, f) => s + (f.fat ?? 0), 0));
 
+  const macrosEstimated = total > 0 && totalProtein === 0 && totalCarbs === 0 && totalFat === 0;
+  const displayProtein = macrosEstimated ? Math.round(total * 0.20 / 4) : totalProtein;
+  const displayCarbs = macrosEstimated ? Math.round(total * 0.50 / 4) : totalCarbs;
+  const displayFat = macrosEstimated ? Math.round(total * 0.30 / 9) : totalFat;
+
   const groups = groupItems(items);
-  const showDetails = !fullscreen || isActive;
+  const showDetails = bareMode ? isActive : (!fullscreen || isActive);
 
   const mealRatio = getMealRatio(config.label);
   const defaultTarget: MacroTarget = {
@@ -523,14 +532,18 @@ export default function MealCardSlot({
 
   return (
     <div
-      className={`relative w-[82vw] sm:w-[400px] rounded-3xl overflow-hidden flex flex-col select-none ${fullscreen ? 'h-full' : 'min-h-[500px]'}`}
+      className={`relative ${bareMode ? 'w-[260px]' : 'w-[90vw] sm:w-[400px]'} rounded-[2rem] overflow-hidden flex flex-col select-none ${fullscreen ? 'h-full' : ''}`}
       style={{
-        transform: isActive ? 'scale(1)' : 'scale(0.93)',
-        opacity: isActive ? 1 : 0.62,
-        boxShadow: isActive
-          ? '0 24px 64px rgba(0,0,0,0.22), 0 8px 24px rgba(0,0,0,0.12)'
-          : '0 4px 16px rgba(0,0,0,0.08)',
-        transition: 'transform 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease, box-shadow 0.5s ease',
+        maxHeight: fullscreen || bareMode ? undefined : noImage ? '280px' : (isActive ? '900px' : '216px'),
+        opacity: isActive ? 1 : bareMode ? 0.75 : 0.62,
+        boxShadow: bareMode
+          ? (isActive ? '0 8px 24px rgba(0,0,0,0.15)' : '0 2px 8px rgba(0,0,0,0.08)')
+          : (isActive
+              ? 'inset 0 15px 25px rgba(255,255,255,0.3), inset 0 1px 1px rgba(255,255,255,0.75), 0 24px 56px rgba(0,0,0,0.16), 0 8px 20px rgba(0,0,0,0.10)'
+              : 'inset 0 1px 1px rgba(255,255,255,0.55), 0 8px 24px rgba(0,0,0,0.07)'),
+        borderTop: bareMode ? undefined : '1.5px solid rgba(255,255,255,0.65)',
+        borderLeft: bareMode ? undefined : '1.5px solid rgba(255,255,255,0.45)',
+        transition: 'max-height 0.5s cubic-bezier(0.4,0,0.2,1), opacity 0.5s ease, box-shadow 0.5s ease',
         outline: isHighlighted ? `2px solid ${config.accent}` : 'none',
         outlineOffset: '3px',
       }}
@@ -538,15 +551,27 @@ export default function MealCardSlot({
       <div
         className="relative flex-shrink-0 overflow-hidden"
         style={{
-          height: fullscreen ? (isActive ? '200px' : '0px') : '8rem',
+          height: noImage ? '0px' : (bareMode && isActive ? '0px' : fullscreen ? (isActive ? '200px' : '0px') : '8rem'),
           transition: 'height 0.6s cubic-bezier(0.4,0,0.2,1)',
         }}
       >
         {config.imageUrl ? (
-          <img src={config.imageUrl} alt={config.label} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full" style={{ background: `linear-gradient(135deg, ${config.gradientFrom}, ${config.gradientVia})` }} />
-        )}
+          <img
+            src={config.imageUrl}
+            alt={config.label}
+            className="w-full h-full object-cover"
+            onError={e => {
+              const el = e.currentTarget;
+              el.style.display = 'none';
+              const fb = el.nextElementSibling as HTMLElement | null;
+              if (fb) fb.style.display = 'block';
+            }}
+          />
+        ) : null}
+        <div
+          className="w-full h-full"
+          style={{ background: `linear-gradient(135deg, ${config.gradientFrom}, ${config.gradientVia})`, display: config.imageUrl ? 'none' : 'block' }}
+        />
         <div
           className="absolute inset-0"
           style={{ background: 'linear-gradient(to bottom, rgba(0,0,0,0.04) 0%, rgba(0,0,0,0.32) 100%)' }}
@@ -563,34 +588,54 @@ export default function MealCardSlot({
       </div>
 
       <div
-        className="flex-1 flex flex-col min-h-0"
+        className={fullscreen ? 'flex-1 flex flex-col min-h-0' : 'flex flex-col'}
         style={{
-          background: 'rgba(255,255,255,0.82)',
-          backdropFilter: 'blur(14px)',
-          WebkitBackdropFilter: 'blur(14px)',
+          background: noImage
+            ? `linear-gradient(135deg, ${config.gradientFrom}CC 0%, rgba(255,255,255,0.72) 80px, rgba(255,255,255,0.65) 100%)`
+            : `linear-gradient(135deg, ${config.accent}12 0%, rgba(255,255,255,0.68) 56px, rgba(255,255,255,0.60) 100%)`,
+          backdropFilter: 'url(#liquid-distort) blur(28px) saturate(190%)',
+          WebkitBackdropFilter: 'blur(28px) saturate(190%)',
         }}
       >
+        {noImage && (
+          <div
+            className="flex-shrink-0"
+            style={{
+              height: '2.5px',
+              background: `linear-gradient(to right, ${config.accent}, ${config.accent}50, transparent)`,
+              opacity: isActive ? 1 : 0.5,
+            }}
+          />
+        )}
         <div className="p-5 pb-2">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
               <div
                 className="w-9 h-9 rounded-2xl flex items-center justify-center"
-                style={{ backgroundColor: `${config.accent}20` }}
+                style={{ backgroundColor: `${config.accent}22` }}
               >
                 <Icon className="w-4 h-4" style={{ color: config.accent }} />
               </div>
-              <h2 className="text-xl font-black text-foreground leading-none tracking-tight">{config.label}</h2>
+              <div>
+                <h2 className="text-xl font-black text-foreground leading-none tracking-tight">{config.label}</h2>
+                {noImage && config.time && (
+                  <p className="text-[9px] text-muted-foreground/40 tracking-wide mt-0.5">{config.time}</p>
+                )}
+              </div>
             </div>
-            <p className="text-sm font-bold tabular-nums pt-1" style={{ color: config.accent }}>{total} kcal</p>
+            <div className="flex flex-col items-end">
+              <span className="text-2xl font-black tabular-nums leading-none" style={{ color: config.accent }}>{total}</span>
+              <span className="text-[10px] text-muted-foreground/45 mt-0.5 font-medium">kcal</span>
+            </div>
           </div>
 
           <div style={{ opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: showDetails ? 'auto' : 'none' }}>
             {items.length > 0 && (
               <MacroChips
                 items={items}
-                protein={totalProtein}
-                carbs={totalCarbs}
-                fat={totalFat}
+                protein={displayProtein}
+                carbs={displayCarbs}
+                fat={displayFat}
                 macroTarget={resolvedMacroTarget}
                 onSelect={key => setMacroOverlay(key)}
               />
@@ -599,20 +644,30 @@ export default function MealCardSlot({
         </div>
 
         <div
-          className={`flex-1 px-5 space-y-1.5 min-h-0 pt-1 ${hasOverlay ? 'overflow-hidden' : 'overflow-y-auto'}`}
+          className={fullscreen ? `flex-1 px-5 space-y-1.5 min-h-0 pt-1 ${hasOverlay ? 'overflow-hidden' : 'overflow-y-auto'}` : 'px-5 space-y-1.5 pt-1'}
           style={{ pointerEvents: showDetails ? 'auto' : 'none' }}
         >
           {groups.length === 0 && (
-            <div className="flex flex-col items-center justify-center gap-3 py-4">
-              <p className="text-xs text-muted-foreground/50 tracking-wide">还没有{config.label}记录，快来添加吧</p>
-              {macroTarget && (
-                <div className="flex items-center gap-3 px-3 py-2 rounded-xl" style={{ background: `${config.accent}08`, border: `1px dashed ${config.accent}30` }}>
-                  <span className="text-[9px] text-muted-foreground/45 shrink-0">本餐建议</span>
-                  <span className="text-[10px] font-semibold tabular-nums" style={{ color: '#3B82F6' }}>蛋白 {resolvedMacroTarget.protein}g</span>
-                  <span className="text-[10px] font-semibold tabular-nums" style={{ color: '#F59E0B' }}>碳水 {resolvedMacroTarget.carbs}g</span>
-                  <span className="text-[10px] font-semibold tabular-nums" style={{ color: '#EF4444' }}>脂肪 {resolvedMacroTarget.fat}g</span>
-                </div>
-              )}
+            <div className="py-2">
+              <p className="text-[10px] text-muted-foreground/35 tracking-wide text-center mb-3">还没有{config.label}记录</p>
+              <div className="flex gap-2">
+                {[
+                  { label: '蛋白质', value: resolvedMacroTarget.protein, color: '#3B82F6', bg: 'rgba(59,130,246,0.07)' },
+                  { label: '碳水', value: resolvedMacroTarget.carbs, color: '#F59E0B', bg: 'rgba(245,158,11,0.07)' },
+                  { label: '脂肪', value: resolvedMacroTarget.fat, color: '#EF4444', bg: 'rgba(239,68,68,0.07)' },
+                ].map(m => (
+                  <div
+                    key={m.label}
+                    className="flex-1 flex flex-col items-center pt-3 pb-2.5 rounded-2xl"
+                    style={{ background: m.bg }}
+                  >
+                    <span className="text-xl font-black tabular-nums leading-none" style={{ color: m.color }}>{m.value}</span>
+                    <span className="text-[10px] font-bold mt-0.5" style={{ color: `${m.color}80` }}>g</span>
+                    <span className="text-[10px] font-semibold mt-1" style={{ color: `${m.color}90` }}>{m.label}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[8px] text-muted-foreground/25 text-center mt-2 tracking-wider">本餐建议目标</p>
             </div>
           )}
 
@@ -626,7 +681,7 @@ export default function MealCardSlot({
             return (
               <div
                 key={group.name}
-                className="rounded-2xl bg-white/65 border border-white/70 overflow-hidden transition-colors hover:bg-white/85"
+                className="rounded-2xl bg-white/52 border border-white/58 overflow-hidden transition-colors hover:bg-white/68"
                 style={{ animation: `mealItemIn 0.38s cubic-bezier(0.4,0,0.2,1) ${groupIdx * 0.06}s both` }}
               >
                 <div className="flex items-center justify-between py-2 px-3">
@@ -692,13 +747,14 @@ export default function MealCardSlot({
         </div>
 
         <div
-          className="mx-5 mt-2 mb-0 h-px"
-          style={{ backgroundColor: `${config.accent}20`, opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease' }}
-        />
-
-        <div
-          className="px-5 pt-3 pb-5 space-y-2"
-          style={{ opacity: showDetails ? 1 : 0, transition: 'opacity 0.35s ease', pointerEvents: showDetails ? 'auto' : 'none' }}
+          className="px-4 pt-3 pb-4 mx-1 mb-2 rounded-2xl space-y-2"
+          style={{
+            opacity: showDetails ? 1 : 0,
+            transition: 'opacity 0.35s ease',
+            pointerEvents: showDetails ? 'auto' : 'none',
+            background: `linear-gradient(135deg, ${config.accent}09 0%, ${config.accent}04 100%)`,
+            border: `1px solid ${config.accent}15`,
+          }}
         >
           {toast && (
             <div
@@ -733,7 +789,7 @@ export default function MealCardSlot({
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={config.placeholder}
-              className="flex-1 bg-white/72 border-white/60 text-sm h-10 rounded-xl min-w-0"
+              className="flex-1 bg-white/72 border-white/60 text-sm h-10 rounded-full min-w-0"
               onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd(); }}
             />
             <Input
@@ -741,12 +797,12 @@ export default function MealCardSlot({
               value={calories}
               onChange={e => setCalories(e.target.value)}
               placeholder="kcal"
-              className="w-16 bg-white/72 border-white/60 text-sm h-10 rounded-xl flex-shrink-0"
+              className="w-16 bg-white/72 border-white/60 text-sm h-10 rounded-full flex-shrink-0"
               onKeyDown={e => { if (e.key === 'Enter' && !e.nativeEvent.isComposing) handleAdd(); }}
             />
             <button
               onClick={handleAdd}
-              className="w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 flex-shrink-0"
+              className="w-10 h-10 rounded-full flex items-center justify-center text-white transition-all cursor-pointer active:scale-90 flex-shrink-0"
               style={{ backgroundColor: config.accent }}
             >
               <Plus className="w-4 h-4" />

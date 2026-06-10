@@ -1,4 +1,4 @@
-import type { UserProfile, BMIResult, ActivityLevel } from '../types';
+import type { UserProfile, BMIResult, ActivityLevel, MealRecord } from '../types';
 
 export function calcBMI(weight: number, height: number): BMIResult {
   if (height <= 0 || weight <= 0) {
@@ -73,4 +73,20 @@ export function calcMacroTargets(profile: UserProfile): { proteinTarget: number;
 
 export function getDefaultMacroTargets(): { proteinTarget: number; carbsTarget: number; fatTarget: number } {
   return { proteinTarget: 125, carbsTarget: 250, fatTarget: 56 };
+}
+
+export function sumMacrosWithEstimate(meals: MealRecord): { protein: number; carbs: number; fat: number } {
+  let protein = 0, carbs = 0, fat = 0;
+  for (const foods of Object.values(meals)) {
+    if (foods.length === 0) continue;
+    const slotCal = foods.reduce((s, f) => s + f.calories, 0);
+    const slotProt = foods.reduce((s, f) => s + (f.protein ?? 0), 0);
+    const slotCarbs = foods.reduce((s, f) => s + (f.carbs ?? 0), 0);
+    const slotFat = foods.reduce((s, f) => s + (f.fat ?? 0), 0);
+    const isEmpty = slotCal > 0 && slotProt === 0 && slotCarbs === 0 && slotFat === 0;
+    protein += isEmpty ? slotCal * 0.20 / 4 : slotProt;
+    carbs += isEmpty ? slotCal * 0.50 / 4 : slotCarbs;
+    fat += isEmpty ? slotCal * 0.30 / 9 : slotFat;
+  }
+  return { protein: Math.round(protein), carbs: Math.round(carbs), fat: Math.round(fat) };
 }

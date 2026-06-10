@@ -7,12 +7,15 @@ interface WeeklyChartsProps {
   targetCalories: number;
 }
 
-const SVG_W = 280;
 const SVG_H = 80;
 const BAR_AREA_H = 62;
 const LABEL_Y = 76;
 const BAR_W = 28;
 const BAR_GAP = 12;
+
+function calcSvgW(count: number) {
+  return Math.max(280, count * (BAR_W + BAR_GAP));
+}
 
 function barX(i: number) {
   return i * (BAR_W + BAR_GAP);
@@ -28,13 +31,12 @@ interface TooltipProps {
 }
 
 function Tooltip({ x, lines }: TooltipProps) {
-  const leftPct = (x / SVG_W) * 100;
   return (
     <div
       className="absolute z-10 pointer-events-none"
       style={{
         bottom: '100%',
-        left: `${leftPct}%`,
+        left: x,
         transform: 'translateX(-50%)',
         marginBottom: 4,
       }}
@@ -50,14 +52,15 @@ function Tooltip({ x, lines }: TooltipProps) {
 
 function CalorieChart({ stats, targetCalories }: { stats: DayStats[]; targetCalories: number }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgW = calcSvgW(stats.length);
   const maxVal = Math.max(targetCalories * 1.3, ...stats.map(d => d.intake), 100);
   const targetY = BAR_AREA_H - (targetCalories / maxVal) * BAR_AREA_H;
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full" style={{ height: SVG_H }}>
-        <line x1={0} y1={targetY} x2={SVG_W} y2={targetY} stroke="#F97316" strokeWidth={0.8} strokeDasharray="3 2" opacity={0.5} />
-        <text x={SVG_W - 2} y={targetY - 2} textAnchor="end" fontSize={6} fill="#F97316" opacity={0.7}>目标</text>
+    <div className="relative overflow-x-auto">
+      <svg width={svgW} viewBox={`0 0 ${svgW} ${SVG_H}`} style={{ height: SVG_H, minWidth: svgW }}>
+        <line x1={0} y1={targetY} x2={svgW} y2={targetY} stroke="#F97316" strokeWidth={0.8} strokeDasharray="3 2" opacity={0.5} />
+        <text x={svgW - 2} y={targetY - 2} textAnchor="end" fontSize={6} fill="#F97316" opacity={0.7}>目标</text>
 
         {stats.map((d, i) => {
           const h = d.intake > 0 ? Math.max(2, (d.intake / maxVal) * BAR_AREA_H) : 0;
@@ -102,15 +105,16 @@ function CalorieChart({ stats, targetCalories }: { stats: DayStats[]; targetCalo
 
 function WaterChart({ stats }: { stats: DayStats[] }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgW = calcSvgW(stats.length);
   const BASELINE = 1500;
   const maxVal = Math.max(BASELINE * 1.4, ...stats.map(d => d.water), 100);
   const baselineY = BAR_AREA_H - (BASELINE / maxVal) * BAR_AREA_H;
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full" style={{ height: SVG_H }}>
-        <line x1={0} y1={baselineY} x2={SVG_W} y2={baselineY} stroke="#0EA5E9" strokeWidth={0.8} strokeDasharray="3 2" opacity={0.45} />
-        <text x={SVG_W - 2} y={baselineY - 2} textAnchor="end" fontSize={6} fill="#0EA5E9" opacity={0.7}>1500ml</text>
+    <div className="relative overflow-x-auto">
+      <svg width={svgW} viewBox={`0 0 ${svgW} ${SVG_H}`} style={{ height: SVG_H, minWidth: svgW }}>
+        <line x1={0} y1={baselineY} x2={svgW} y2={baselineY} stroke="#0EA5E9" strokeWidth={0.8} strokeDasharray="3 2" opacity={0.45} />
+        <text x={svgW - 2} y={baselineY - 2} textAnchor="end" fontSize={6} fill="#0EA5E9" opacity={0.7}>1500ml</text>
 
         {stats.map((d, i) => {
           const h = d.water > 0 ? Math.max(2, (d.water / maxVal) * BAR_AREA_H) : 0;
@@ -154,6 +158,7 @@ function WaterChart({ stats }: { stats: DayStats[] }) {
 
 function WeightChart({ stats }: { stats: DayStats[] }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgW = calcSvgW(stats.length);
   const weightData = stats.map((d, i) => ({ i, w: d.weight })).filter(x => x.w !== undefined) as { i: number; w: number }[];
 
   if (weightData.length === 0) {
@@ -176,8 +181,8 @@ function WeightChart({ stats }: { stats: DayStats[] }) {
   const polyline = weightData.map(x => `${pointX(x.i)},${pointY(x.w)}`).join(' ');
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full" style={{ height: SVG_H }}>
+    <div className="relative overflow-x-auto">
+      <svg width={svgW} viewBox={`0 0 ${svgW} ${SVG_H}`} style={{ height: SVG_H, minWidth: svgW }}>
         {weightData.length > 1 && (
           <polyline
             points={polyline}
@@ -233,12 +238,13 @@ function WeightChart({ stats }: { stats: DayStats[] }) {
 
 function MacroStackChart({ stats }: { stats: DayStats[] }) {
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  const svgW = calcSvgW(stats.length);
   const totals = stats.map(d => d.protein * 4 + d.carbs * 4 + d.fat * 9);
   const maxTotal = Math.max(...totals, 100);
 
   return (
-    <div className="relative">
-      <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full" style={{ height: SVG_H }}>
+    <div className="relative overflow-x-auto">
+      <svg width={svgW} viewBox={`0 0 ${svgW} ${SVG_H}`} style={{ height: SVG_H, minWidth: svgW }}>
         {stats.map((d, i) => {
           const total = totals[i];
           if (total === 0) {
@@ -320,7 +326,7 @@ export default function WeeklyCharts({ stats, targetCalories }: WeeklyChartsProp
 
   return (
     <div className="space-y-3">
-      <ChartCard icon={Flame} title="7日热量趋势" iconColor="#F97316">
+      <ChartCard icon={Flame} title="热量趋势" iconColor="#F97316">
         <CalorieChart stats={stats} targetCalories={targetCalories} />
         <div className="flex items-center gap-3 mt-2">
           <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-sm" style={{ background: '#22C55E' }} /><span className="text-[10px] text-muted-foreground">达标</span></div>

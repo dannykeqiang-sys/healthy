@@ -1,7 +1,7 @@
 {
-  "name": "@ali/ice-stark-child",
+  "name": "healthy-tracker",
   "version": "0.0.0",
-  "description": "ice stark child",
+  "description": "燃烧我的卡路里 - Calorie Tracker",
   "scripts": {
     "start": "ice start --port 3000 --speedup",
     "build": "ice build",
@@ -9,7 +9,6 @@
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix"
   },
   "dependencies": {
-    "@ali/mkt-universal-aes": "^3.0.1",
     "@ice/mf-runtime": "^1.0.0",
     "@ice/runtime": "^1.5.2",
     "@radix-ui/react-slot": "^1.1.1",
@@ -17,6 +16,7 @@
     "@supabase/supabase-js": "^2.91.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^12.40.0",
     "lucide-react": "^0.468.0",
     "radix-ui": "^1.4.3",
     "react": "^18.3.1",
@@ -24,10 +24,6 @@
     "tailwind-merge": "^2.6.0"
   },
   "devDependencies": {
-    "@ali/aone-super-plugins": "0.1.7",
-    "@ali/eslint-config-att": "^1.0.6",
-    "@ali/ice-plugin-def": "^1.2.4",
-    "@ali/ice-plugin-standards": "^1.0.0",
     "@ice/app": "^3.6.0",
     "@ice/plugin-icestark": "^1.2.0",
     "@ice/spec": "2.0.0-beta.3",
@@ -42,9 +38,5 @@
     "tailwindcss": "^4.1.18",
     "tw-animate-css": "^1.2.0",
     "typescript": "^4.9.5"
-  },
-  "repository": "git@gitlab.alibaba-inc.com:ice/micro-frontend-demo.git",
-  "publishConfig": {
-    "registry": "https://registry.anpm.alibaba-inc.com"
   }
 }

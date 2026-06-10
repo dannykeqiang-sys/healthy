@@ -3,6 +3,15 @@ import type { UserProfile, DailyRecord, MealRecord } from '../types';
 const PROFILE_KEY = 'calorie_user_profile';
 const RECORDS_KEY = 'calorie_daily_records';
 
+export function normalizeMeals(meals: Partial<MealRecord> | undefined): MealRecord {
+  return {
+    breakfast: meals?.breakfast ?? [],
+    lunch: meals?.lunch ?? [],
+    dinner: meals?.dinner ?? [],
+    snack: meals?.snack ?? [],
+  };
+}
+
 export function getTodayKey(): string {
   return new Date().toISOString().split('T')[0];
 }
@@ -34,7 +43,7 @@ export function loadTodayRecord(): DailyRecord {
   const today = getTodayKey();
   const existing = all[today];
   if (existing) {
-    return { ...existing, water: existing.water ?? [] };
+    return { ...existing, meals: normalizeMeals(existing.meals), water: existing.water ?? [] };
   }
   return {
     date: today,
@@ -53,7 +62,7 @@ export function saveTodayRecord(record: DailyRecord): void {
 export function loadRecordByDate(date: string): DailyRecord | null {
   const all = loadAllRecords();
   const existing = all[date];
-  if (existing) return { ...existing, water: existing.water ?? [] };
+  if (existing) return { ...existing, meals: normalizeMeals(existing.meals), water: existing.water ?? [] };
   return null;
 }
 

@@ -18,23 +18,16 @@ interface WeeklyStatsModalProps {
   targetCalories: number;
   tdee: number;
   baseWeight: number;
-}
-
-function getWeekRange(): string {
-  const end = new Date();
-  const start = new Date();
-  start.setDate(start.getDate() - 6);
-  const fmt = (d: Date) => `${d.getMonth() + 1}月${d.getDate()}日`;
-  return `${fmt(start)} — ${fmt(end)}`;
+  dateRange?: string;
 }
 
 function getHeadline(name: string, activeDays: number, daysOnTarget: number, exerciseDays: number): string {
   if (activeDays === 0) return `${name}，翻开这里，是你旅程的第一步`;
-  if (activeDays >= 7 && daysOnTarget >= 6) return `${name}，这是真正属于你的完美一周`;
-  if (activeDays >= 6) return `${name}，这周的你很闪光`;
-  if (exerciseDays >= 4 && daysOnTarget >= 4) return `${name}，自律让你更美`;
-  if (daysOnTarget >= 5) return `${name}，你这周的节制令人心疼地美`;
-  if (activeDays >= 4) return `${name}，每一天的记录都是爱自己`;
+  if (activeDays >= 60 && daysOnTarget >= 45) return `${name}，这份坚持是真正属于你的财富`;
+  if (activeDays >= 30 && daysOnTarget >= 20) return `${name}，你一直都很闪光`;
+  if (exerciseDays >= 20 && daysOnTarget >= 20) return `${name}，自律让你更美`;
+  if (daysOnTarget >= Math.round(activeDays * 0.7)) return `${name}，你的节制令人心疼地美`;
+  if (activeDays >= 10) return `${name}，每一天的记录都是爱自己`;
   return `${name}，你一直都在路上`;
 }
 
@@ -86,38 +79,40 @@ function getSuggestions(stats: DayStats[], profile: UserProfile | null, targetCa
   const exerciseDays = stats.filter(d => d.burn > 0).length;
   const lowWaterDays = stats.filter(d => d.intake > 0 && d.water < 1500).length;
   const overTargetDays = activeDays.filter(d => d.intake > targetCalories + 100).length;
+  const overTargetRate = activeDays.length > 0 ? overTargetDays / activeDays.length : 0;
+  const exerciseRate = activeDays.length > 0 ? exerciseDays / activeDays.length : 0;
 
   const weightDays = stats.filter(d => d.weight !== undefined && d.weight !== null) as (DayStats & { weight: number })[];
   const weightTrend = weightDays.length >= 2
     ? weightDays[weightDays.length - 1].weight - weightDays[0].weight
     : null;
 
-  if (activeDays.length < 4) {
-    suggestions.push({ text: `本周只记录了 ${activeDays.length} 天，坚持每天记录才能让数据真正帮助你`, color: '#8B5CF6', priority: 1 });
+  if (activeDays.length < 7) {
+    suggestions.push({ text: `目前仅有 ${activeDays.length} 天有效记录，坚持每天记录才能让数据真正帮到你`, color: '#8B5CF6', priority: 1 });
   }
-  if (exerciseDays === 0) {
-    suggestions.push({ text: '本周没有运动记录，每周 2-3 次有氧运动对热量管理帮助很大', color: '#F97316', priority: 2 });
-  } else if (exerciseDays <= 2) {
-    suggestions.push({ text: `本周运动了 ${exerciseDays} 天，尝试增加到 4 天以上效果会更好`, color: '#F59E0B', priority: 3 });
+  if (exerciseDays === 0 && activeDays.length >= 3) {
+    suggestions.push({ text: '暂无运动记录，每周 2-3 次有氧运动对热量管理帮助很大', color: '#F97316', priority: 2 });
+  } else if (exerciseRate < 0.3 && activeDays.length >= 7) {
+    suggestions.push({ text: `运动频率偏低（${exerciseDays}/${activeDays.length} 天），尝试提升到每 3 天至少运动 1 次`, color: '#F59E0B', priority: 3 });
   }
   if (lowWaterDays >= 3) {
     suggestions.push({ text: `有 ${lowWaterDays} 天饮水不足 1500ml，充足的水分有助于代谢和减脂`, color: '#0EA5E9', priority: 4 });
   }
-  if (overTargetDays >= 3) {
-    suggestions.push({ text: `${overTargetDays} 天热量超标，可以考虑减少精制碳水和晚餐的分量`, color: '#EF4444', priority: 5 });
+  if (overTargetRate >= 0.4 && overTargetDays >= 3) {
+    suggestions.push({ text: `${overTargetDays} 天热量超标，占记录天数 ${Math.round(overTargetRate * 100)}%，可减少精制碳水和晚餐分量`, color: '#EF4444', priority: 5 });
   }
   if (weightTrend !== null) {
-    if (weightTrend > 0.5 && profile?.goal === 'lose') {
-      suggestions.push({ text: `本周体重上升了 ${weightTrend.toFixed(1)} kg，建议减少热量摄入并增加有氧运动`, color: '#EF4444', priority: 2 });
-    } else if (weightTrend < -0.5 && profile?.goal === 'gain') {
-      suggestions.push({ text: `本周体重下降了 ${Math.abs(weightTrend).toFixed(1)} kg，增加蛋白质和热量摄入很重要`, color: '#F97316', priority: 2 });
-    } else if (weightTrend <= -0.3 && profile?.goal === 'lose') {
-      suggestions.push({ text: `本周减重 ${Math.abs(weightTrend).toFixed(1)} kg，控制节奏很棒，继续保持`, color: '#22C55E', priority: 6 });
+    if (weightTrend > 1 && profile?.goal === 'lose') {
+      suggestions.push({ text: `体重整体上升了 ${weightTrend.toFixed(1)} kg，建议减少热量摄入并增加有氧运动`, color: '#EF4444', priority: 2 });
+    } else if (weightTrend < -1 && profile?.goal === 'gain') {
+      suggestions.push({ text: `体重整体下降了 ${Math.abs(weightTrend).toFixed(1)} kg，增加蛋白质和热量摄入很重要`, color: '#F97316', priority: 2 });
+    } else if (weightTrend < -0.5 && profile?.goal === 'lose') {
+      suggestions.push({ text: `减重 ${Math.abs(weightTrend).toFixed(1)} kg，控制节奏很棒，继续保持`, color: '#22C55E', priority: 6 });
     }
   }
 
   if (suggestions.length === 0) {
-    suggestions.push({ text: '本周表现很均衡，继续保持当前的饮食和运动节奏', color: '#A3B899', priority: 99 });
+    suggestions.push({ text: '整体表现均衡，继续保持当前的饮食和运动节奏', color: '#A3B899', priority: 99 });
   }
 
   return suggestions.sort((a, b) => a.priority - b.priority).slice(0, 3);
@@ -135,6 +130,7 @@ export default function WeeklyStatsModal({
   targetCalories,
   tdee,
   baseWeight,
+  dateRange,
 }: WeeklyStatsModalProps) {
   const [activeChart, setActiveChart] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -168,7 +164,6 @@ export default function WeeklyStatsModal({
   const name = profile?.name || '你';
   const headline = getHeadline(name, activeDaysCount, daysOnTarget, exerciseDays);
   const subline = getSubline(activeDaysCount, exerciseDays, waterDays);
-  const weekRange = getWeekRange();
 
   const metrics = [
     { label: '记录', value: activeDaysCount, icon: Calendar, color: '#8B5CF6' },
@@ -226,7 +221,7 @@ export default function WeeklyStatsModal({
 
             <div className="relative pr-10">
               <p className="text-white/65 text-[11px] font-medium tracking-widest uppercase mb-2">
-                {weekRange}
+                {dateRange || '全程档案'}
               </p>
               <h2
                 className="text-white text-xl font-bold leading-snug mb-1"
@@ -281,8 +276,8 @@ export default function WeeklyStatsModal({
                   <div className="w-6 h-6 rounded-lg flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #8B5CF6, #6366F1)' }}>
                     <TrendingUp className="w-3 h-3 text-white" />
                   </div>
-                  <p className="text-sm font-bold text-foreground">本周趋势对比</p>
-                  <span className="text-[10px] text-muted-foreground ml-auto">前半周 vs 后半周</span>
+                  <p className="text-sm font-bold text-foreground">全程趋势对比</p>
+                  <span className="text-[10px] text-muted-foreground ml-auto">前半段 vs 后半段</span>
                 </div>
                 <div className="px-4 pb-4 space-y-3">
                   {trendItems.map(item => {

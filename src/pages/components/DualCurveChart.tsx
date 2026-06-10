@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import type { DayStats } from './AIHealingCard';
 
 function formatDateShort(date: string): string {
@@ -188,6 +188,12 @@ export default function DualCurveChart({ stats, tdee, targetCalories }: DualCurv
   const [tip, setTip] = useState<TooltipState | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const hideTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
 
   const hasData = stats.some(d => d.intake > 0);
 

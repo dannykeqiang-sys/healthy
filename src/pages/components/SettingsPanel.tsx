@@ -119,7 +119,7 @@ export default function SettingsPanel({ open, apiKey, onClose, onSave, onLogout,
           <div className="border-t border-border/50">
             <button
               onClick={() => {
-                if (window.confirm('确定要退出吗？将清除本地数据并返回引导页重新设置。')) {
+                if (window.confirm('确定要退出登录吗？')) {
                   onLogout();
                 }
               }}
@@ -129,7 +129,7 @@ export default function SettingsPanel({ open, apiKey, onClose, onSave, onLogout,
               退出登录，重新设置
             </button>
             <p className="text-[11px] text-muted-foreground/50 text-center mt-1.5">
-              退出后本地记录将被清除，可重新引导设置
+              退出后跳转登录页，可重新登录或注册
             </p>
           </div>
         </div>

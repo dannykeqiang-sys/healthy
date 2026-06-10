@@ -361,7 +361,7 @@ export async function parseMultiDateMeals(
         {
           role: 'system',
           content: `你是一个多日饮食记录批量导入助手。今天是 ${todayDate}。
-用户会用自然语言描述多天的饮食、运动和饮水情况，可能包含相对日期（今天、昨天、前天、大前天、上周X、X月X日等）。请将内容按日期归类，返回结构化JSON。
+用户会用自然语言描述多天的饮食、运动和饮水情况，可能包含相对日期（今天、昨天、前天、大前天、上周X、X月X日等）。请将内容按日期归类，并估算每种食物的卡路里及三大宏营养素，返回结构化JSON。
 
 日期解析规则：
 - "今天" → ${todayDate}
@@ -380,10 +380,10 @@ export async function parseMultiDateMeals(
     {
       "date": "YYYY-MM-DD",
       "meals": {
-        "breakfast": [{"name":"食物名","calories":数字,"protein":克数,"carbs":克数,"fat":克数,"sodium":毫克数}],
-        "lunch": [...],
-        "dinner": [...],
-        "snack": [...]
+        "breakfast": [{"name":"食物名","calories":数字,"protein":蛋白质克数,"carbs":碳水化合物克数,"fat":脂肪克数,"sodium":钠毫克数}],
+        "lunch": [{"name":"食物名","calories":数字,"protein":蛋白质克数,"carbs":碳水化合物克数,"fat":脂肪克数,"sodium":钠毫克数}],
+        "dinner": [{"name":"食物名","calories":数字,"protein":蛋白质克数,"carbs":碳水化合物克数,"fat":脂肪克数,"sodium":钠毫克数}],
+        "snack": [{"name":"食物名","calories":数字,"protein":蛋白质克数,"carbs":碳水化合物克数,"fat":脂肪克数,"sodium":钠毫克数}]
       },
       "exercises": [{"name":"运动名","calories":数字}],
       "water_logs": [{"raw_text":"液体简称","amount":毫升整数}]
@@ -396,7 +396,9 @@ export async function parseMultiDateMeals(
 - 无数据的餐段返回 []，无运动/饮水则返回 []
 - 时间线索（早上/中午/晚上/下午）决定餐段归属
 - 数量要合计（如"两个鸡蛋"→calories是两个合计），name注明数量（如"鸡蛋×2"）
-- calories/protein/carbs/fat 均为纯数字，sodium 为纯整数毫克
+- protein=蛋白质(g)、carbs=碳水化合物(g)、fat=脂肪(g)、sodium=钠(mg)，必须根据常见食物营养数据库估算，不可省略或留0
+- calories/protein/carbs/fat 均为纯数字（无单位），sodium 为纯整数毫克
+- 钠含量参考：白米饭(100g)≈1mg、白面包(1片)≈170mg、馒头(100g)≈200mg、方便面(1包)≈1500mg、酱油(1汤匙)≈900mg、火腿(100g)≈700mg、鸡蛋(1个)≈70mg、牛奶(200ml)≈100mg、鸡胸肉(100g)≈70mg
 - water_logs 记录所有液体实际含水量（ml），amount 为纯整数`,
         },
         { role: 'user', content: userInput },

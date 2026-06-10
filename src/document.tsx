@@ -14,22 +14,17 @@ export default function Document() {
         <Meta />
         <Title />
         <Links />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(w, d, s, q) {
-  w[q] = w[q] || [];
-  var f = d.getElementsByTagName(s)[0],j = d.createElement(s);
-  j.async = true;
-  j.id = 'beacon-aplus';
-  j.setAttribute('exparams','userid=&aplus&sidx=aplusSidex&ckx=aplusCkx');
-  j.src = "//g.alicdn.com/alilog/mlog/aplus_v2.js";
-  j.crossorigin = 'anonymous';
-  f.parentNode.insertBefore(j, f);
-})(window, document, 'script', 'aplus_queue');`,
-          }}
-        />
       </head>
       <body>
+        <svg style={{ display: 'none' }}>
+          <defs>
+            <filter id="liquid-distort" x="-10%" y="-10%" width="120%" height="120%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.005" numOctaves={2} result="fluid-noise" />
+              <feGaussianBlur in="fluid-noise" stdDeviation={3} result="blurred-noise" />
+              <feDisplacementMap in="SourceGraphic" in2="blurred-noise" scale={20} xChannelSelector="R" yChannelSelector="G" />
+            </filter>
+          </defs>
+        </svg>
         <Main />
         <Scripts />
       </body>

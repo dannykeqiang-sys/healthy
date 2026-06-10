@@ -6,7 +6,7 @@ import UserProfilePanel from './components/UserProfilePanel';
 import SettingsPanel from './components/SettingsPanel';
 import BottomNav from './components/BottomNav';
 import AIDrawer from './components/AIDrawer';
-import MealCarousel from './components/MealCarousel';
+import MealCarousel, { getDailyImageUrl, CARD_ORDER } from './components/MealCarousel';
 import type { MealCarouselRef } from './components/MealCarousel';
 import DateSwitcher from './components/DateSwitcher';
 import AnalyticsPanel from './components/AnalyticsPanel';
@@ -16,8 +16,10 @@ import TutorialOverlay from './components/TutorialOverlay';
 import WeightChip from './components/WeightChip';
 import DesktopHeader from './components/DesktopHeader';
 import DesktopRightPanel from './components/DesktopRightPanel';
+import DesktopParallaxSlider from './components/DesktopParallaxSlider';
 import ExportDataModal from './components/ExportDataModal';
 import BatchImportModal from './components/BatchImportModal';
+import type { ImportMode } from './components/BatchImportModal';
 import type { MultiDateEntry } from '../utils/deepseek';
 import { loadProfile, saveProfile, loadTodayRecord, saveTodayRecord, loadRecordByDate, saveRecordByDate } from '../utils/storage';
 import { idbSaveRecord, idbGetRecord } from '../utils/indexedDB';
@@ -71,6 +73,7 @@ export default function Home() {
   const [showAICelebration, setShowAICelebration] = useState(false);
   const [showExport, setShowExport] = useState(false);
   const [showBatchImport, setShowBatchImport] = useState(false);
+  const [mobileCarouselActiveIndex, setMobileCarouselActiveIndex] = useState(0);
 
   const carouselRef = useRef<MealCarouselRef>(null);
   const desktopCarouselRef = useRef<MealCarouselRef>(null);
@@ -379,13 +382,7 @@ export default function Home() {
 
   const handleLogout = useCallback(() => {
     localStorage.clear();
-    setProfile(null);
-    setRecord(makeEmptyRecord(getTodayKey()));
-    setApiKey(BUILT_IN_API_KEY);
-    setShowSettings(false);
-    setShowTutorial(false);
-    setShowAICelebration(false);
-    setShowOnboarding(true);
+    history?.push('/login');
   }, []);
 
   const handleTabChange = useCallback((tab: string) => {
@@ -402,7 +399,7 @@ export default function Home() {
     }
   }, [activeTab]);
 
-  const handleBatchImport = useCallback(async (entries: MultiDateEntry[]) => {
+  const handleBatchImport = useCallback(async (entries: MultiDateEntry[], mode: ImportMode) => {
     const todayKey = getTodayKey();
     for (const entry of entries) {
       const isToday = entry.date === todayKey;
@@ -422,9 +419,15 @@ export default function Home() {
         id: crypto.randomUUID(), amount: w.amount, note: w.raw_text, time: '',
       }));
       if (isToday) {
-        if (mealUpdates.length > 0) handleMealsUpdate(mealUpdates);
-        if (exerciseItems.length > 0) handleExercisesUpdate(exerciseItems);
-        if (waterItems.length > 0) handleWaterUpdate(waterItems);
+        if (mode === 'overwrite') {
+          if (mealUpdates.length > 0) handleMealsReplace(mealUpdates);
+          if (exerciseItems.length > 0) handleExercisesReplace(exerciseItems);
+          if (waterItems.length > 0) handleWaterReplace(waterItems);
+        } else {
+          if (mealUpdates.length > 0) handleMealsUpdate(mealUpdates);
+          if (exerciseItems.length > 0) handleExercisesUpdate(exerciseItems);
+          if (waterItems.length > 0) handleWaterUpdate(waterItems);
+        }
       } else {
         let existing: DailyRecord;
         try {
@@ -432,21 +435,30 @@ export default function Home() {
         } catch {
           existing = loadRecordByDate(entry.date) ?? makeEmptyRecord(entry.date);
         }
-        const newMeals = { ...existing.meals };
-        for (const { mealType, item } of mealUpdates) {
-          newMeals[mealType] = [...(newMeals[mealType] ?? []), item];
+        let newRecord: DailyRecord;
+        if (mode === 'overwrite') {
+          const newMeals = { breakfast: [], lunch: [], dinner: [], snack: [] } as MealRecord;
+          for (const { mealType, item } of mealUpdates) {
+            newMeals[mealType] = [...newMeals[mealType], item];
+          }
+          newRecord = { ...existing, meals: newMeals, exercises: exerciseItems, water: waterItems };
+        } else {
+          const newMeals = { ...existing.meals };
+          for (const { mealType, item } of mealUpdates) {
+            newMeals[mealType] = [...(newMeals[mealType] ?? []), item];
+          }
+          newRecord = {
+            ...existing,
+            meals: newMeals,
+            exercises: [...(existing.exercises ?? []), ...exerciseItems],
+            water: [...(existing.water ?? []), ...waterItems],
+          };
         }
-        const newRecord: DailyRecord = {
-          ...existing,
-          meals: newMeals,
-          exercises: [...(existing.exercises ?? []), ...exerciseItems],
-          water: [...(existing.water ?? []), ...waterItems],
-        };
         saveRecordByDate(newRecord);
         await idbSaveRecord(newRecord).catch(() => {});
       }
     }
-  }, [handleMealsUpdate, handleExercisesUpdate, handleWaterUpdate]);
+  }, [handleMealsUpdate, handleExercisesUpdate, handleWaterUpdate, handleMealsReplace, handleExercisesReplace, handleWaterReplace]);
 
   const closeDrawerAndGoToday = useCallback(() => {
     setAiOpen(false);
@@ -478,70 +490,29 @@ export default function Home() {
         onWaterReplace: (items: WaterItem[]) => { handleHistoryWaterReplace(items); closeDrawerAndGoToday(); },
       };
 
-  const desktopMainContent = (
-    <>
-      <div
-        className="flex-shrink-0 z-30"
-        style={{
-          background: 'rgba(255,255,255,0.95)',
-          backdropFilter: 'blur(12px)',
-          borderBottom: '1px solid rgba(0,0,0,0.06)',
-        }}
-      >
-        <div className="px-6 py-3 flex items-center gap-3">
-          <div className="flex-1 min-w-0">
-            <DateSwitcher selectedDate={journalDate} onDateChange={setJournalDate} />
-          </div>
-          <div className="flex-shrink-0">
-            <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: 'rgba(163,184,153,0.12)', color: 'var(--primary)' }}>
-              {isViewingToday ? '今日' : '历史'}
-            </span>
-          </div>
+  const desktopDateBar = (
+    <div
+      className="flex-shrink-0"
+      style={{
+        background: 'rgba(255,255,255,0.42)',
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+        borderBottom: '1px solid rgba(255,255,255,0.5)',
+        boxShadow: 'inset 0 6px 12px rgba(255,255,255,0.3)',
+        zIndex: 30,
+      }}
+    >
+      <div className="px-6 py-3 flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <DateSwitcher selectedDate={journalDate} onDateChange={setJournalDate} />
+        </div>
+        <div className="flex-shrink-0">
+          <span className="text-xs font-medium px-2.5 py-1 rounded-full" style={{ background: 'rgba(163,184,153,0.12)', color: 'var(--primary)' }}>
+            {isViewingToday ? '今日' : '历史'}
+          </span>
         </div>
       </div>
-
-      {activeTab === 'today' && (
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          {!isViewingToday && historyRecord && (
-            <div className="flex-shrink-0 px-6 pt-3 pb-0">
-              <button
-                onClick={() => { handleReuseHistoryRecord(); setJournalDate(getTodayKey()); }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-all cursor-pointer"
-              >
-                <Copy className="w-4 h-4" />
-                复用此日手帐到今天
-              </button>
-            </div>
-          )}
-          <div className="flex-1 min-h-0">
-            <MealCarousel
-              ref={desktopCarouselRef}
-              record={activeRecord}
-              apiKey={apiKey}
-              isViewingToday={isViewingToday}
-              profile={profile}
-              journalDate={journalDate}
-              fullscreen
-              onChange={activeOnChange}
-              onWaterReplace={isViewingToday ? handleWaterReplace : handleHistoryWaterReplace}
-            />
-          </div>
-        </div>
-      )}
-
-      {activeTab !== 'today' && (
-        <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.1) transparent' }}>
-          <div className="px-6 py-5 space-y-5">
-            {activeTab === 'analytics' && (
-              <AnalyticsPanel profile={profile} record={activeRecord} journalDate={journalDate} />
-            )}
-            {activeTab === 'ai' && (
-              <SmartAdvicePanel profile={profile} record={activeRecord} apiKey={apiKey} isViewingToday={isViewingToday} />
-            )}
-          </div>
-        </div>
-      )}
-    </>
+    </div>
   );
 
   return (
@@ -549,7 +520,7 @@ export default function Home() {
       {/* 桌面端全屏布局 */}
       <div
         className="hidden lg:flex flex-col overflow-hidden"
-        style={{ height: '100dvh', background: 'var(--background)' }}
+        style={{ height: '100dvh', background: 'linear-gradient(135deg, #e6efe0 0%, #d4e8f4 40%, #e8d8f2 100%)' }}
       >
         <DesktopHeader
           profile={profile}
@@ -559,37 +530,113 @@ export default function Home() {
           onOpenSettings={() => setShowSettings(true)}
           onBatchImport={() => setShowBatchImport(true)}
         />
-        <div className="flex flex-1 overflow-hidden">
-          <main className="flex-1 flex flex-col overflow-hidden">
-            {desktopMainContent}
-          </main>
-          <DesktopRightPanel
-            record={activeRecord}
-            profile={profile}
-            apiKey={apiKey}
-            journalDate={journalDate}
-            isViewingToday={isViewingToday}
-            onMealsUpdate={aiHandlers.onMealsUpdate}
-            onMealsReplace={aiHandlers.onMealsReplace}
-            onExercisesUpdate={aiHandlers.onExercisesUpdate}
-            onExercisesReplace={aiHandlers.onExercisesReplace}
-            onWaterUpdate={aiHandlers.onWaterUpdate}
-            onWaterReplace={aiHandlers.onWaterReplace}
-            onRecordSuccess={() => setShowAICelebration(true)}
-          />
-        </div>
+
+        {activeTab === 'today' ? (
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+            {desktopDateBar}
+            <div className="flex-1 min-h-0 flex overflow-hidden">
+              <div className="flex-1 min-h-0 relative overflow-hidden">
+                {!isViewingToday && historyRecord && (
+                  <div className="absolute top-3 left-6 z-50">
+                    <button
+                      onClick={() => { handleReuseHistoryRecord(); setJournalDate(getTodayKey()); }}
+                      className="flex items-center gap-2 py-2 px-4 rounded-xl border border-primary/30 bg-white/80 text-primary text-sm font-medium hover:bg-primary/10 transition-all cursor-pointer shadow-sm"
+                      style={{ backdropFilter: 'blur(8px)' }}
+                    >
+                      <Copy className="w-4 h-4" />
+                      复用此日手帐到今天
+                    </button>
+                  </div>
+                )}
+                <DesktopParallaxSlider
+                  ref={desktopCarouselRef}
+                  record={activeRecord}
+                  apiKey={apiKey}
+                  isViewingToday={isViewingToday}
+                  profile={profile}
+                  journalDate={journalDate}
+                  onChange={activeOnChange}
+                  onWaterReplace={isViewingToday ? handleWaterReplace : handleHistoryWaterReplace}
+                />
+              </div>
+              <DesktopRightPanel
+                record={activeRecord}
+                profile={profile}
+                apiKey={apiKey}
+                journalDate={journalDate}
+                isViewingToday={isViewingToday}
+                onMealsUpdate={aiHandlers.onMealsUpdate}
+                onMealsReplace={aiHandlers.onMealsReplace}
+                onExercisesUpdate={aiHandlers.onExercisesUpdate}
+                onExercisesReplace={aiHandlers.onExercisesReplace}
+                onWaterUpdate={aiHandlers.onWaterUpdate}
+                onWaterReplace={aiHandlers.onWaterReplace}
+                onRecordSuccess={() => setShowAICelebration(true)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="flex flex-1 overflow-hidden">
+            <main className="flex-1 flex flex-col overflow-hidden">
+              {desktopDateBar}
+              <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(0,0,0,0.1) transparent' }}>
+                <div className="px-6 py-5 space-y-5">
+                  {activeTab === 'analytics' && (
+                    <AnalyticsPanel profile={profile} record={activeRecord} journalDate={journalDate} />
+                  )}
+                  {activeTab === 'ai' && (
+                    <SmartAdvicePanel profile={profile} record={activeRecord} apiKey={apiKey} isViewingToday={isViewingToday} />
+                  )}
+                </div>
+              </div>
+            </main>
+            <DesktopRightPanel
+              record={activeRecord}
+              profile={profile}
+              apiKey={apiKey}
+              journalDate={journalDate}
+              isViewingToday={isViewingToday}
+              onMealsUpdate={aiHandlers.onMealsUpdate}
+              onMealsReplace={aiHandlers.onMealsReplace}
+              onExercisesUpdate={aiHandlers.onExercisesUpdate}
+              onExercisesReplace={aiHandlers.onExercisesReplace}
+              onWaterUpdate={aiHandlers.onWaterUpdate}
+              onWaterReplace={aiHandlers.onWaterReplace}
+              onRecordSuccess={() => setShowAICelebration(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* 移动端布局 */}
-      <div className="lg:hidden min-h-screen bg-background journal-texture pb-20">
+      <div className="lg:hidden min-h-screen pb-20" style={{ background: 'transparent' }}>
+        {/* 移动端全屏视差背景 */}
+        <div className="fixed inset-0 pointer-events-none" style={{ zIndex: 0 }}>
+          {CARD_ORDER.map((type, i) => (
+            <div
+              key={type}
+              className="absolute inset-0 bg-cover bg-center"
+              style={{
+                backgroundImage: `url(${getDailyImageUrl(type, journalDate)})`,
+                opacity: mobileCarouselActiveIndex === i ? 1 : 0,
+                transition: 'opacity 0.7s ease',
+              }}
+            />
+          ))}
+          <div
+            className="absolute inset-0"
+            style={{ background: 'linear-gradient(to bottom, rgba(255,255,255,0.38) 0%, rgba(255,255,255,0.52) 45%, rgba(255,255,255,0.72) 100%)' }}
+          />
+        </div>
+
         <Navbar
           profile={profile}
           onEditProfile={() => setShowProfile(true)}
           onOpenSettings={() => setShowSettings(true)}
         />
 
-        <div className="sticky top-16 z-40 bg-background/95 backdrop-blur-md border-b border-border/40">
-          <div className="max-w-2xl mx-auto px-4 sm:px-6 py-1.5 flex items-center gap-2">
+        <div className="sticky top-16 z-40 border-b border-white/40" style={{ background: 'rgba(250,248,245,0.72)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' }}>
+          <div className="px-4 sm:px-6 py-1.5 flex items-center gap-2">
             <div className="flex-1 min-w-0">
               <DateSwitcher
                 selectedDate={journalDate}
@@ -600,29 +647,32 @@ export default function Home() {
           </div>
         </div>
 
-        <main className="max-w-2xl mx-auto px-4 sm:px-6 py-4">
-          <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
-            <div className="flex-1 sm:flex-none">
+        <main className="pt-3 pb-4" style={{ position: 'relative', zIndex: 1 }}>
+          <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
+            <div className="flex-1 min-w-0">
               {activeTab === 'today' && (
-                <div>
-                  <h2 className="text-lg font-bold text-foreground leading-none">今日手帐</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {isViewingToday ? '记录今天的饮食与运动' : '查看或编辑历史记录'}
-                  </p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: 'var(--primary)', opacity: 0.5 }} />
+                  <span className="text-sm font-bold text-foreground">今日手帐</span>
+                  <span className="text-xs text-muted-foreground/45 hidden sm:inline">
+                    {isViewingToday ? '记录饮食与运动' : '历史记录查看'}
+                  </span>
                 </div>
               )}
               {activeTab === 'analytics' && (
-                <div>
-                  <h2 className="text-lg font-bold text-foreground leading-none">对比时光机</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    {isViewingToday ? '近7天健康趋势分析' : `${formatDateLabel(journalDate)} · 近7天趋势`}
-                  </p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: 'var(--primary)', opacity: 0.5 }} />
+                  <span className="text-sm font-bold text-foreground">对比时光机</span>
+                  <span className="text-xs text-muted-foreground/45 hidden sm:inline">
+                    {isViewingToday ? '近7天健康趋势' : `${formatDateLabel(journalDate)} · 近7天`}
+                  </span>
                 </div>
               )}
               {activeTab === 'ai' && (
-                <div>
-                  <h2 className="text-lg font-bold text-foreground leading-none">AI 分析</h2>
-                  <p className="text-xs text-muted-foreground mt-0.5">炎症指数 · 训练建议 · 智能分析</p>
+                <div className="flex items-center gap-2.5">
+                  <div className="w-1 h-4 rounded-full flex-shrink-0" style={{ background: 'var(--primary)', opacity: 0.5 }} />
+                  <span className="text-sm font-bold text-foreground">AI 分析</span>
+                  <span className="text-xs text-muted-foreground/45 hidden sm:inline">炎症指数 · 训练建议</span>
                 </div>
               )}
             </div>
@@ -631,13 +681,15 @@ export default function Home() {
           {activeTab === 'today' && (
             <div className="space-y-4">
               {!isViewingToday && historyRecord && (
-                <button
-                  onClick={() => { handleReuseHistoryRecord(); setJournalDate(getTodayKey()); }}
-                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-all cursor-pointer"
-                >
-                  <Copy className="w-4 h-4" />
-                  复用此日手帐到今天
-                </button>
+                <div className="px-4 sm:px-6">
+                  <button
+                    onClick={() => { handleReuseHistoryRecord(); setJournalDate(getTodayKey()); }}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-all cursor-pointer"
+                  >
+                    <Copy className="w-4 h-4" />
+                    复用此日手帐到今天
+                  </button>
+                </div>
               )}
 
               <div data-tutorial="cards">
@@ -650,17 +702,22 @@ export default function Home() {
                   journalDate={journalDate}
                   onChange={activeOnChange}
                   onWaterReplace={isViewingToday ? handleWaterReplace : handleHistoryWaterReplace}
+                  onActiveIndexChange={setMobileCarouselActiveIndex}
                 />
               </div>
             </div>
           )}
 
           {activeTab === 'analytics' && (
-            <AnalyticsPanel profile={profile} record={activeRecord} journalDate={journalDate} />
+            <div className="px-4 sm:px-6">
+              <AnalyticsPanel profile={profile} record={activeRecord} journalDate={journalDate} />
+            </div>
           )}
 
           {activeTab === 'ai' && (
-            <SmartAdvicePanel profile={profile} record={activeRecord} apiKey={apiKey} isViewingToday={isViewingToday} />
+            <div className="px-4 sm:px-6">
+              <SmartAdvicePanel profile={profile} record={activeRecord} apiKey={apiKey} isViewingToday={isViewingToday} />
+            </div>
           )}
         </main>
 

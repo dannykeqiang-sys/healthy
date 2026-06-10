@@ -1,5 +1,6 @@
 import { useRef, useState, useEffect, useCallback, useMemo, forwardRef, useImperativeHandle } from 'react';
-import { Sunrise, Sun, Moon, Cookie, Dumbbell, Droplets } from 'lucide-react';
+import type { CSSProperties } from 'react';
+import { Sunrise, Sun, Moon, Cookie, Dumbbell, Droplets, ChevronLeft, ChevronRight } from 'lucide-react';
 import MealCardSlot from './MealCardSlot';
 import ExerciseCardSlot from './ExerciseCardSlot';
 import WaterCardSlot from './WaterCardSlot';
@@ -22,9 +23,9 @@ export interface MealCarouselRef {
   scrollToMeal: (type: CarouselCardType) => void;
 }
 
-const CARD_ORDER: CarouselCardType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'exercise', 'water'];
+export const CARD_ORDER: CarouselCardType[] = ['breakfast', 'lunch', 'dinner', 'snack', 'exercise', 'water'];
 
-const IMAGE_POOLS: Record<CarouselCardType, string[]> = {
+export const IMAGE_POOLS: Record<CarouselCardType, string[]> = {
   breakfast: [
     'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=800&q=80',
     'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=800&q=80',
@@ -42,16 +43,16 @@ const IMAGE_POOLS: Record<CarouselCardType, string[]> = {
   dinner: [
     'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=80',
     'https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800&q=80',
-    'https://images.unsplash.com/photo-1544025162-d76538941a80?w=800&q=80',
+    'https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800&q=80',
     'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=800&q=80',
-    'https://images.unsplash.com/photo-1476224203421-9ac39bcb3b48?w=800&q=80',
+    'https://images.unsplash.com/photo-1432139555190-58524dae6a55?w=800&q=80',
   ],
   snack: [
-    'https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=800&q=80',
-    'https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800&q=80',
-    'https://images.unsplash.com/photo-1559181567-c3190958d845?w=800&q=80',
-    'https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=800&q=80',
-    'https://images.unsplash.com/photo-1504630083234-14187a9df0f5?w=800&q=80',
+    'https://images.unsplash.com/photo-1571091718767-18b5b1457add?w=800&q=80',
+    'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?w=800&q=80',
+    'https://images.unsplash.com/photo-1488477181946-6428a0291777?w=800&q=80',
+    'https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=800&q=80',
+    'https://images.unsplash.com/photo-1490474418585-ba9bad8fd0ea?w=800&q=80',
   ],
   exercise: [
     'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=800&q=80',
@@ -63,13 +64,13 @@ const IMAGE_POOLS: Record<CarouselCardType, string[]> = {
   water: [
     'https://images.unsplash.com/photo-1548839140-29a749e1cf4d?w=800&q=80',
     'https://images.unsplash.com/photo-1523362628745-0c100150b504?w=800&q=80',
-    'https://images.unsplash.com/photo-1499638673-c22d679197ed?w=800&q=80',
-    'https://images.unsplash.com/photo-1500829996759-6e4f5f8dcc43?w=800&q=80',
-    'https://images.unsplash.com/photo-1536489885935-3513cf28dd77?w=800&q=80',
+    'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=800&q=80',
+    'https://images.unsplash.com/photo-1550583724-b2692b85b150?w=800&q=80',
+    'https://images.unsplash.com/photo-1544145945-f90425340c7e?w=800&q=80',
   ],
 };
 
-function getDailyImageUrl(type: CarouselCardType, dateStr: string): string {
+export function getDailyImageUrl(type: CarouselCardType, dateStr: string): string {
   const pool = IMAGE_POOLS[type] ?? [];
   if (!pool.length) return '';
   let hash = 0;
@@ -77,7 +78,7 @@ function getDailyImageUrl(type: CarouselCardType, dateStr: string): string {
   return pool[hash % pool.length];
 }
 
-const MEAL_CONFIGS_BASE: (Omit<MealSlotConfig, 'imageUrl'> & { type: MealType; pageBg: string })[] = [
+export const MEAL_CONFIGS_BASE: (Omit<MealSlotConfig, 'imageUrl'> & { type: MealType; pageBg: string })[] = [
   {
     type: 'breakfast',
     label: '早餐',
@@ -136,7 +137,7 @@ const MEAL_CONFIGS_BASE: (Omit<MealSlotConfig, 'imageUrl'> & { type: MealType; p
   },
 ];
 
-const EXERCISE_CONFIG_BASE: ExerciseSlotConfig & { pageBg: string } = {
+export const EXERCISE_CONFIG_BASE: ExerciseSlotConfig & { pageBg: string } = {
   label: '运动',
   en: 'EXERCISE',
   num: '05',
@@ -146,7 +147,7 @@ const EXERCISE_CONFIG_BASE: ExerciseSlotConfig & { pageBg: string } = {
   time: '',
 };
 
-const WATER_CONFIG_BASE: WaterSlotConfig & { pageBg: string } = {
+export const WATER_CONFIG_BASE: WaterSlotConfig & { pageBg: string } = {
   label: '喝水',
   en: 'HYDRATION',
   num: '06',
@@ -165,16 +166,29 @@ interface MealCarouselProps {
   profile?: UserProfile | null;
   journalDate?: string;
   fullscreen?: boolean;
+  bareMode?: boolean;
   onChange: (record: DailyRecord) => void;
   onWaterReplace?: (items: WaterItem[]) => void;
+  onActiveIndexChange?: (index: number) => void;
 }
 
 const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
-  ({ record, apiKey, isViewingToday = true, profile, journalDate, fullscreen = false, onChange, onWaterReplace }, ref) => {
+  ({ record, apiKey, isViewingToday = true, profile, journalDate, fullscreen = false, bareMode = false, onChange, onWaterReplace, onActiveIndexChange }, ref) => {
     const [activeIndex, setActiveIndex] = useState(0);
     const [highlightedType, setHighlightedType] = useState<CarouselCardType | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const cardRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const activeIndexRef = useRef(0);
+    const onActiveIndexChangeRef = useRef(onActiveIndexChange);
+    onActiveIndexChangeRef.current = onActiveIndexChange;
+
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    const [cardWidth, setCardWidth] = useState(() => {
+      if (typeof window === 'undefined') return 320;
+      return window.innerWidth >= 640 ? 400 : Math.round(window.innerWidth * 0.90);
+    });
+    const pointerStartX = useRef<number | null>(null);
+    const GAP_PX = 16;
 
     const { proteinTarget, carbsTarget, fatTarget } = profile
       ? calcMacroTargets(profile)
@@ -209,13 +223,21 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
       waterConfig.imageUrl,
     ], [mealConfigs, exerciseConfig, waterConfig]);
 
+    const goToIndex = useCallback((index: number) => {
+      const clamped = Math.max(0, Math.min(CARD_ORDER.length - 1, index));
+      activeIndexRef.current = clamped;
+      setActiveIndex(clamped);
+      onActiveIndexChangeRef.current?.(clamped);
+    }, []);
+
     const scrollCardIntoView = (index: number, behavior: ScrollBehavior = 'smooth') => {
       const container = containerRef.current;
       const card = cardRefs.current[index];
       if (!container || !card) return;
       const containerRect = container.getBoundingClientRect();
       const cardRect = card.getBoundingClientRect();
-      const target = container.scrollLeft + cardRect.left - containerRect.left - (containerRect.width - cardRect.width) / 2;
+      const offset = bareMode ? 24 : (containerRect.width - cardRect.width) / 2;
+      const target = container.scrollLeft + cardRect.left - containerRect.left - offset;
       container.scrollTo({ left: target, behavior });
     };
 
@@ -223,27 +245,52 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
       scrollToMeal: (type: CarouselCardType) => {
         const index = CARD_ORDER.indexOf(type);
         if (index < 0) return;
-        scrollCardIntoView(index);
+        if (!bareMode && !fullscreen && !isMobile) {
+          goToIndex(index);
+        } else {
+          scrollCardIntoView(index);
+        }
         setHighlightedType(type);
         setTimeout(() => setHighlightedType(null), 1800);
       },
-    }));
+    }), [bareMode, fullscreen, isMobile, goToIndex]);
 
     useEffect(() => {
+      if (typeof window === 'undefined') return;
+      const handleResize = () => {
+        setIsMobile(window.innerWidth < 768);
+        if (!bareMode && !fullscreen) {
+          setCardWidth(window.innerWidth >= 640 ? 400 : Math.round(window.innerWidth * 0.90));
+        }
+      };
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }, [bareMode, fullscreen]);
+
+    useEffect(() => {
+      if (!bareMode && !fullscreen && !isMobile) return;
       const container = containerRef.current;
       if (!container) return;
 
       const updateActive = () => {
-        const center = container.scrollLeft + container.clientWidth / 2;
+        const snapPoint = bareMode
+          ? container.scrollLeft + 24
+          : container.scrollLeft + container.clientWidth / 2;
         let closest = 0;
         let minDist = Infinity;
         cardRefs.current.forEach((card, i) => {
           if (!card) return;
-          const cardCenter = card.offsetLeft + card.offsetWidth / 2;
-          const dist = Math.abs(center - cardCenter);
+          const cardAnchor = bareMode
+            ? card.offsetLeft
+            : card.offsetLeft + card.offsetWidth / 2;
+          const dist = Math.abs(snapPoint - cardAnchor);
           if (dist < minDist) { minDist = dist; closest = i; }
         });
-        setActiveIndex(closest);
+        if (closest !== activeIndexRef.current) {
+          activeIndexRef.current = closest;
+          setActiveIndex(closest);
+          onActiveIndexChangeRef.current?.(closest);
+        }
       };
 
       container.addEventListener('scroll', updateActive, { passive: true });
@@ -252,7 +299,7 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
         container.removeEventListener('scroll', updateActive);
         cancelAnimationFrame(raf);
       };
-    }, []);
+    }, [bareMode, fullscreen, isMobile]);
 
     const handleFoodAdd = useCallback((mealType: MealType, item: FoodItem) => {
       onChange({ ...record, meals: { ...record.meals, [mealType]: [...record.meals[mealType], item] } });
@@ -313,11 +360,47 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
 
     const accent = ALL_ACCENT[activeIndex] ?? ALL_ACCENT[0];
 
+    const getMacroTarget = (type: MealType) => {
+      const ratio = MEAL_RATIOS[type];
+      const hasItems = record.meals[type].length > 0;
+      return hasItems
+        ? { protein: Math.max(1, Math.round(proteinTarget * ratio)), carbs: Math.max(1, Math.round(carbsTarget * ratio)), fat: Math.max(1, Math.round(fatTarget * ratio)), isRedistributed: false }
+        : { protein: Math.max(1, Math.round((proteinTarget - totalProtein) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))), carbs: Math.max(1, Math.round((carbsTarget - totalCarbs) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))), fat: Math.max(1, Math.round((fatTarget - totalFat) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))), isRedistributed: true };
+    };
+
+    const handlePointerDown = (e: { clientX: number }) => {
+      pointerStartX.current = e.clientX;
+    };
+    const handlePointerUp = (e: { clientX: number }) => {
+      if (pointerStartX.current === null) return;
+      const dx = e.clientX - pointerStartX.current;
+      pointerStartX.current = null;
+      if (Math.abs(dx) > 50) goToIndex(dx < 0 ? activeIndex + 1 : activeIndex - 1);
+    };
+
+    const floatingImageStyle = (_isActive: boolean, imageUrl: string | undefined): CSSProperties => ({
+      height: '130px',
+      marginBottom: '0px',
+      overflow: 'hidden',
+      position: 'relative',
+      zIndex: 10,
+      borderRadius: '20px 20px 0 0',
+      flexShrink: 0,
+      backgroundImage: !imageUrl ? `linear-gradient(135deg, #f0f4f8, #d9e2ec)` : undefined,
+      backgroundColor: !imageUrl ? '#f0f4f8' : undefined,
+    });
+
     return (
       <div
         className={`relative overflow-hidden ${fullscreen ? 'h-full flex flex-col' : 'rounded-3xl'}`}
+        style={{
+          boxShadow: !bareMode && !fullscreen
+            ? `0 0 0 1.5px ${accent}25, 0 24px 64px rgba(0,0,0,0.16), 0 8px 24px rgba(0,0,0,0.09)`
+            : undefined,
+          transition: 'box-shadow 0.5s ease',
+        }}
       >
-        {allImages.map((src, i) => (
+        {!bareMode && !isMobile && allImages.map((src, i) => (
           <div
             key={src + i}
             className="absolute inset-0 bg-cover bg-center"
@@ -329,125 +412,352 @@ const MealCarousel = forwardRef<MealCarouselRef, MealCarouselProps>(
             }}
           />
         ))}
-        <div
-          className="absolute inset-0"
-          style={{
-            background: fullscreen
-              ? 'linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.45) 35%, rgba(255,255,255,0.68) 100%)'
-              : 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.72) 100%)',
-            backdropFilter: 'blur(2px)',
-            zIndex: 1,
-          }}
-        />
+        {!bareMode && !isMobile && (
+          <div
+            className="absolute inset-0"
+            style={{
+              background: fullscreen
+                ? 'linear-gradient(to bottom, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.45) 35%, rgba(255,255,255,0.68) 100%)'
+                : 'linear-gradient(to bottom, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.55) 40%, rgba(255,255,255,0.72) 100%)',
+              backdropFilter: 'blur(2px)',
+              zIndex: 1,
+            }}
+          />
+        )}
 
-        <div
-          ref={containerRef}
-          className={`meal-carousel-scroll relative flex overflow-x-auto snap-x snap-mandatory gap-4 ${fullscreen ? 'flex-1 py-4' : 'py-6'}`}
-          style={{
-            paddingLeft: 'calc(50% - min(41vw, 200px))',
-            paddingRight: 'calc(50% - min(41vw, 200px))',
-            scrollbarWidth: 'none',
-            zIndex: 2,
-          }}
-        >
-          {mealConfigs.map((cfg, i) => {
-            const ratio = MEAL_RATIOS[cfg.type];
-            const hasItems = record.meals[cfg.type].length > 0;
-            const macroTarget: MacroTarget = hasItems
-              ? {
-                  protein: Math.max(1, Math.round(proteinTarget * ratio)),
-                  carbs: Math.max(1, Math.round(carbsTarget * ratio)),
-                  fat: Math.max(1, Math.round(fatTarget * ratio)),
-                  isRedistributed: false,
-                }
-              : {
-                  protein: Math.max(1, Math.round((proteinTarget - totalProtein) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))),
-                  carbs: Math.max(1, Math.round((carbsTarget - totalCarbs) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))),
-                  fat: Math.max(1, Math.round((fatTarget - totalFat) * (uneatenRatioSum > 0 ? ratio / uneatenRatioSum : ratio))),
-                  isRedistributed: true,
-                };
-            return (
+        {(!bareMode && !fullscreen && !isMobile) ? (
+          <>
+            <div
+              className="relative"
+              style={{ overflow: 'hidden', zIndex: 2 }}
+              onPointerDown={handlePointerDown}
+              onPointerUp={handlePointerUp}
+            >
               <div
-                key={cfg.type}
-                ref={el => { cardRefs.current[i] = el; }}
-                className={`snap-center flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
+                style={{
+                  display: 'flex',
+                  gap: `${GAP_PX}px`,
+                  transform: `translateX(calc(50% - ${cardWidth / 2}px - ${activeIndex * (cardWidth + GAP_PX)}px))`,
+                  transition: 'transform 0.45s cubic-bezier(0.4,0,0.2,1)',
+                  willChange: 'transform',
+                  paddingTop: '14px',
+                  paddingBottom: '4px',
+                }}
               >
-                <MealCardSlot
-                  config={cfg}
-                  items={record.meals[cfg.type]}
-                  isActive={activeIndex === i}
-                  isHighlighted={highlightedType === cfg.type}
-                  macroTarget={macroTarget}
+                {mealConfigs.map((cfg, i) => {
+                  const isActive = activeIndex === i;
+                  const macroTarget = getMacroTarget(cfg.type);
+                  return (
+                    <div
+                      key={cfg.type}
+                      className="flex-shrink-0 flex flex-col"
+                      style={{
+                        width: cardWidth,
+                        position: 'relative',
+                        transform: isActive ? 'scale(1) translateY(0px)' : 'scale(1) translateY(0px)',
+                        transformOrigin: 'top center',
+                        transition: 'transform 0.45s cubic-bezier(0.4,0,0.2,1)',
+                      }}
+                    >
+                      <div style={floatingImageStyle(isActive, cfg.imageUrl)}>
+                        {cfg.imageUrl && (
+                          <img src={cfg.imageUrl} alt={cfg.label} className="w-full h-full object-cover object-center" />
+                        )}
+                        <div
+                          className="absolute inset-x-0 bottom-0"
+                          style={{ height: '56px', background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.92) 100%)' }}
+                        />
+                        <div
+                          className="absolute top-3 left-3.5 flex items-center gap-2"
+                          style={{ opacity: isActive ? 1 : 0, transition: 'opacity 0.38s ease 0.08s' }}
+                        >
+                          <span className="text-[9px] font-black text-white/60 tracking-[0.22em]">{cfg.num}</span>
+                          <span className="text-sm font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.3)' }}>{cfg.label}</span>
+                          {cfg.time && <span className="text-[9px] text-white/55 tracking-wide hidden sm:inline">{cfg.time}</span>}
+                        </div>
+                      </div>
+                      {!isActive && (
+                        <div
+                          className="absolute inset-0 cursor-pointer"
+                          style={{ zIndex: 20 }}
+                          onClick={() => goToIndex(i)}
+                        />
+                      )}
+                      <div style={{ position: 'relative', zIndex: 5, flexShrink: 0 }}>
+                        <MealCardSlot
+                          config={cfg}
+                          items={record.meals[cfg.type]}
+                          isActive={isActive}
+                          isHighlighted={highlightedType === cfg.type}
+                          macroTarget={macroTarget}
+                          noImage={true}
+                          onAdd={mealHandlers[cfg.type].onAdd}
+                          onRemove={mealHandlers[cfg.type].onRemove}
+                          onUpdate={mealHandlers[cfg.type].onUpdate}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+                <div
+                  className="flex-shrink-0 flex flex-col"
+                  style={{
+                    width: cardWidth,
+                    position: 'relative',
+                    transform: activeIndex === 4 ? 'scale(1) translateY(0px)' : 'scale(1) translateY(0px)',
+                    transformOrigin: 'top center',
+                    transition: 'transform 0.45s cubic-bezier(0.4,0,0.2,1)',
+                  }}
+                >
+                  <div style={floatingImageStyle(activeIndex === 4, exerciseConfig.imageUrl)}>
+                    {exerciseConfig.imageUrl && (
+                      <img src={exerciseConfig.imageUrl} alt={exerciseConfig.label} className="w-full h-full object-cover object-center" />
+                    )}
+                    <div
+                      className="absolute inset-x-0 bottom-0"
+                      style={{ height: '56px', background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.92) 100%)' }}
+                    />
+                    <div
+                      className="absolute top-3 left-3.5 flex items-center gap-2"
+                      style={{ opacity: activeIndex === 4 ? 1 : 0, transition: 'opacity 0.38s ease 0.08s' }}
+                    >
+                      <span className="text-[9px] font-black text-white/60 tracking-[0.22em]">{exerciseConfig.num}</span>
+                      <span className="text-sm font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.3)' }}>{exerciseConfig.label}</span>
+                    </div>
+                  </div>
+                  {activeIndex !== 4 && (
+                    <div className="absolute inset-0 cursor-pointer" style={{ zIndex: 20 }} onClick={() => goToIndex(4)} />
+                  )}
+                  <div style={{ position: 'relative', zIndex: 5, flexShrink: 0 }}>
+                    <ExerciseCardSlot
+                      config={exerciseConfig}
+                      items={record.exercises}
+                      isActive={activeIndex === 4}
+                      isHighlighted={highlightedType === 'exercise'}
+                      noImage={true}
+                      journalDate={journalDate}
+                      onAdd={handleExerciseAdd}
+                      onRemove={handleExerciseRemove}
+                      onUpdate={handleExerciseUpdate}
+                    />
+                  </div>
+                </div>
+                <div
+                  className="flex-shrink-0 flex flex-col"
+                  style={{
+                    width: cardWidth,
+                    position: 'relative',
+                    transform: activeIndex === 5 ? 'scale(1) translateY(0px)' : 'scale(1) translateY(0px)',
+                    transformOrigin: 'top center',
+                    transition: 'transform 0.45s cubic-bezier(0.4,0,0.2,1)',
+                  }}
+                >
+                  <div style={floatingImageStyle(activeIndex === 5, waterConfig.imageUrl)}>
+                    {waterConfig.imageUrl && (
+                      <img src={waterConfig.imageUrl} alt={waterConfig.label} className="w-full h-full object-cover object-center" />
+                    )}
+                    <div
+                      className="absolute inset-x-0 bottom-0"
+                      style={{ height: '56px', background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,0.92) 100%)' }}
+                    />
+                    <div
+                      className="absolute top-3 left-3.5 flex items-center gap-2"
+                      style={{ opacity: activeIndex === 5 ? 1 : 0, transition: 'opacity 0.38s ease 0.08s' }}
+                    >
+                      <span className="text-[9px] font-black text-white/60 tracking-[0.22em]">{waterConfig.num}</span>
+                      <span className="text-sm font-black text-white leading-none" style={{ textShadow: '0 1px 6px rgba(0,0,0,0.3)' }}>{waterConfig.label}</span>
+                    </div>
+                  </div>
+                  {activeIndex !== 5 && (
+                    <div className="absolute inset-0 cursor-pointer" style={{ zIndex: 20 }} onClick={() => goToIndex(5)} />
+                  )}
+                  <div style={{ position: 'relative', zIndex: 5, flexShrink: 0 }}>
+                    <WaterCardSlot
+                      config={waterConfig}
+                      items={record.water ?? []}
+                      apiKey={apiKey}
+                      isActive={activeIndex === 5}
+                      isHighlighted={highlightedType === 'water'}
+                      noImage={true}
+                      isViewingToday={isViewingToday}
+                      profile={profile}
+                      onAdd={handleWaterAdd}
+                      onRemove={handleWaterRemove}
+                      onUpdate={handleWaterUpdate}
+                      onReplace={handleWaterReplaceLocal}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="relative flex items-center justify-center gap-2.5 pb-4 pt-1.5" style={{ zIndex: 2 }}>
+              <div
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full"
+                style={{
+                  background: 'rgba(255,255,255,0.72)',
+                  backdropFilter: 'blur(14px)',
+                  WebkitBackdropFilter: 'blur(14px)',
+                  border: '1px solid rgba(255,255,255,0.55)',
+                  boxShadow: '0 2px 16px rgba(0,0,0,0.07)',
+                }}
+              >
+                <button
+                  onClick={() => goToIndex(activeIndex - 1)}
+                  className="flex items-center justify-center cursor-pointer flex-shrink-0 rounded-full transition-opacity"
+                  style={{
+                    width: 26, height: 26,
+                    opacity: activeIndex === 0 ? 0.28 : 0.85,
+                  }}
+                  disabled={activeIndex === 0}
+                >
+                  <ChevronLeft className="w-4 h-4" style={{ color: accent }} />
+                </button>
+                {CARD_ORDER.map((type, i) => {
+                  const isActive = activeIndex === i;
+                  const dotAccent = ALL_ACCENT[i];
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => goToIndex(i)}
+                      className="rounded-full cursor-pointer flex-shrink-0"
+                      style={{
+                        width: isActive ? '20px' : '5px',
+                        height: '5px',
+                        backgroundColor: isActive ? dotAccent : `${dotAccent}30`,
+                        transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
+                      }}
+                    />
+                  );
+                })}
+                <button
+                  onClick={() => goToIndex(activeIndex + 1)}
+                  className="flex items-center justify-center cursor-pointer flex-shrink-0 rounded-full transition-opacity"
+                  style={{
+                    width: 26, height: 26,
+                    opacity: activeIndex === CARD_ORDER.length - 1 ? 0.28 : 0.85,
+                  }}
+                  disabled={activeIndex === CARD_ORDER.length - 1}
+                >
+                  <ChevronRight className="w-4 h-4" style={{ color: accent }} />
+                </button>
+              </div>
+              <span
+                className="text-[11px] font-bold tracking-widest tabular-nums px-2.5 py-1.5 rounded-full"
+                style={{
+                  color: accent,
+                  transition: 'color 0.5s ease',
+                  background: 'rgba(255,255,255,0.65)',
+                  backdropFilter: 'blur(10px)',
+                  WebkitBackdropFilter: 'blur(10px)',
+                  border: '1px solid rgba(255,255,255,0.5)',
+                }}
+              >
+                {String(activeIndex + 1).padStart(2, '0')} / {String(CARD_ORDER.length).padStart(2, '0')}
+              </span>
+            </div>
+          </>
+        ) : (
+          <>
+            <div
+              ref={containerRef}
+              className={`meal-carousel-scroll relative flex items-start overflow-x-auto snap-x snap-mandatory ${isMobile ? 'gap-0' : 'gap-4'} ${fullscreen ? 'flex-1 py-4' : 'py-6'}`}
+              style={{
+                paddingLeft: bareMode ? '1.5rem' : (isMobile ? '5vw' : 'calc(50% - min(41vw, 200px))'),
+                paddingRight: bareMode ? '1.5rem' : (isMobile ? '5vw' : 'calc(50% - min(41vw, 200px))'),
+                scrollbarWidth: 'none',
+                zIndex: 2,
+              }}
+            >
+              {mealConfigs.map((cfg, i) => {
+                const macroTarget = getMacroTarget(cfg.type);
+                return (
+                  <div
+                    key={cfg.type}
+                    ref={el => { cardRefs.current[i] = el; }}
+                    className={`${bareMode ? 'snap-start' : 'snap-center'} flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
+                  >
+                    <MealCardSlot
+                      config={cfg}
+                      items={record.meals[cfg.type]}
+                      isActive={activeIndex === i}
+                      isHighlighted={highlightedType === cfg.type}
+                      macroTarget={macroTarget}
+                      fullscreen={fullscreen}
+                      bareMode={bareMode}
+                      onAdd={mealHandlers[cfg.type].onAdd}
+                      onRemove={mealHandlers[cfg.type].onRemove}
+                      onUpdate={mealHandlers[cfg.type].onUpdate}
+                    />
+                  </div>
+                );
+              })}
+              <div
+                ref={el => { cardRefs.current[4] = el; }}
+                className={`${bareMode ? 'snap-start' : 'snap-center'} flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
+              >
+                <ExerciseCardSlot
+                  config={exerciseConfig}
+                  items={record.exercises}
+                  isActive={activeIndex === 4}
+                  isHighlighted={highlightedType === 'exercise'}
                   fullscreen={fullscreen}
-                  onAdd={mealHandlers[cfg.type].onAdd}
-                  onRemove={mealHandlers[cfg.type].onRemove}
-                  onUpdate={mealHandlers[cfg.type].onUpdate}
+                  bareMode={bareMode}
+                  journalDate={journalDate}
+                  onAdd={handleExerciseAdd}
+                  onRemove={handleExerciseRemove}
+                  onUpdate={handleExerciseUpdate}
                 />
               </div>
-            );
-          })}
-          <div
-            ref={el => { cardRefs.current[4] = el; }}
-            className={`snap-center flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
-          >
-            <ExerciseCardSlot
-              config={exerciseConfig}
-              items={record.exercises}
-              isActive={activeIndex === 4}
-              isHighlighted={highlightedType === 'exercise'}
-              fullscreen={fullscreen}
-              journalDate={journalDate}
-              onAdd={handleExerciseAdd}
-              onRemove={handleExerciseRemove}
-              onUpdate={handleExerciseUpdate}
-            />
-          </div>
-          <div
-            ref={el => { cardRefs.current[5] = el; }}
-            className={`snap-center flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
-          >
-            <WaterCardSlot
-              config={waterConfig}
-              items={record.water ?? []}
-              apiKey={apiKey}
-              isActive={activeIndex === 5}
-              isHighlighted={highlightedType === 'water'}
-              fullscreen={fullscreen}
-              isViewingToday={isViewingToday}
-              profile={profile}
-              onAdd={handleWaterAdd}
-              onRemove={handleWaterRemove}
-              onUpdate={handleWaterUpdate}
-              onReplace={handleWaterReplaceLocal}
-            />
-          </div>
-        </div>
-
-        <div className={`relative flex items-center justify-center gap-1.5 flex-shrink-0 ${fullscreen ? 'pb-3 pt-1' : 'pb-5'}`} style={{ zIndex: 2 }}>
-          {CARD_ORDER.map((type, i) => {
-            const isActive = activeIndex === i;
-            const dotAccent = ALL_ACCENT[i];
-            return (
-              <button
-                key={type}
-                onClick={() => scrollCardIntoView(i)}
-                className="rounded-full cursor-pointer"
-                style={{
-                  width: isActive ? '22px' : '6px',
-                  height: '6px',
-                  backgroundColor: isActive ? dotAccent : `${accent}40`,
-                  transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
-                }}
-              />
-            );
-          })}
-          <span
-            className="ml-2 text-[11px] font-semibold tracking-widest tabular-nums"
-            style={{ color: accent, transition: 'color 0.5s ease' }}
-          >
-            {String(activeIndex + 1).padStart(2, '0')} · {String(CARD_ORDER.length).padStart(2, '0')}
-          </span>
-        </div>
+              <div
+                ref={el => { cardRefs.current[5] = el; }}
+                className={`${bareMode ? 'snap-start' : 'snap-center'} flex-shrink-0 ${fullscreen ? 'h-full' : ''}`}
+              >
+                <WaterCardSlot
+                  config={waterConfig}
+                  items={record.water ?? []}
+                  apiKey={apiKey}
+                  isActive={activeIndex === 5}
+                  isHighlighted={highlightedType === 'water'}
+                  fullscreen={fullscreen}
+                  bareMode={bareMode}
+                  isViewingToday={isViewingToday}
+                  profile={profile}
+                  onAdd={handleWaterAdd}
+                  onRemove={handleWaterRemove}
+                  onUpdate={handleWaterUpdate}
+                  onReplace={handleWaterReplaceLocal}
+                />
+              </div>
+            </div>
+            {!bareMode && (
+              <div className={`relative flex items-center justify-center gap-1.5 flex-shrink-0 ${fullscreen ? 'pb-3 pt-1' : 'pb-5'}`} style={{ zIndex: 2 }}>
+                {CARD_ORDER.map((type, i) => {
+                  const isActive = activeIndex === i;
+                  const dotAccent = ALL_ACCENT[i];
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => scrollCardIntoView(i)}
+                      className="rounded-full cursor-pointer"
+                      style={{
+                        width: isActive ? '22px' : '6px',
+                        height: '6px',
+                        backgroundColor: isActive ? dotAccent : `${accent}40`,
+                        transition: 'all 0.35s cubic-bezier(0.4,0,0.2,1)',
+                      }}
+                    />
+                  );
+                })}
+                <span
+                  className="ml-2 text-[11px] font-semibold tracking-widest tabular-nums"
+                  style={{ color: accent, transition: 'color 0.5s ease' }}
+                >
+                  {String(activeIndex + 1).padStart(2, '0')} · {String(CARD_ORDER.length).padStart(2, '0')}
+                </span>
+              </div>
+            )}
+          </>
+        )}
 
         <style>{`
           .meal-carousel-scroll::-webkit-scrollbar { display: none; }
