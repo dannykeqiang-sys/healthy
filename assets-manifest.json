@@ -1,0 +1,11 @@
+{
+  "publicPath": "/healthy/",
+  "entries": {
+    "main": [
+      "css/main.css",
+      "js/main.js"
+    ]
+  },
+  "pages": {},
+  "assets": {}
+}
